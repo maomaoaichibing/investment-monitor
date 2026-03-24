@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Portfolio {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  positions   Position[]
+  theses      Thesis[]
+}
+
+model Position {
+  id              String   @id @default(cuid())
+  portfolioId     String
+  symbol          String
+  assetName       String
+  market          String
+  quantity        Float
+  costPrice       Float
+  positionWeight  Float
+  holdingStyle    String  // short_term / swing / long_term
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  portfolio       Portfolio @relation(fields: [portfolioId], references: [id])
+  thesis          Thesis[]
+  monitorPlans    MonitorPlan[]
+  eventAnalyses   EventAnalysis[]
+  alerts          Alert[]
+}
+
+model Thesis {
+  id               String   @id @default(cuid())
+  positionId       String
+  portfolioId      String
+  title            String
+  summary          String
+  content          String
+  investmentStyle  String   @default("growth") // growth / value / quality / momentum
+  holdingPeriod    String   @default("long_term") // short_term / medium_term / long_term
+  pricePhasesJson  String   @map("price_phases_json")
+  coreThesisJson   String   @map("core_thesis_json")
+  fragilePointsJson String   @map("fragile_points_json")
+  monitorTargetsJson String @map("monitor_targets_json")
+  status           String   @default("generated") // generated / pending / failed
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  position         Position @relation(fields: [positionId], references: [id])
+  portfolio        Portfolio @relation(fields: [portfolioId], references: [id])
+  monitorPlans     MonitorPlan[]
+  eventAnalyses    EventAnalysis[]
+}
+
+model MonitorPlan {
+  id                 String   @id @default(cuid())
+  positionId         String
+  thesisId           String   @unique
+  title              String
+  description        String?
+  priority           String   @default("medium") // high / medium / low
+  reviewFrequency    String   @default("weekly") // daily / weekly / biweekly / monthly
+  monitorItemsJson   String   @map("monitor_items_json")
+  disconfirmSignals  String?  @map("disconfirm_signals") // 简化的JSON字符串
+  actionHints        String?  @map("action_hints")      // 简化的JSON字符串
+  notes              String?
+  status             String   @default("active") // active / paused / completed
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  position           Position @relation(fields: [positionId], references: [id])
+  thesis             Thesis   @relation(fields: [thesisId], references: [id])
+}
+
+model Event {
+  id             String   @id @default(cuid())
+  symbol         String
+  eventType      String   // earnings, guidance_change, policy, industry_data, price_break, management_comment, regulation, news
+  title          String
+  content        String
+  eventTime      DateTime
+  source         String   @default("manual")
+  metadataJson   String   @map("metadata_json")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  eventAnalyses  EventAnalysis[]
+  alerts         Alert[]
+}
+
+model EventAnalysis {
+  id              String   @id @default(cuid())
+  eventId         String
+  positionId      String
+  thesisId        String
+  relevanceScore  Float
+  thesisImpact    String   // strengthen / maintain / weaken / reverse
+  impactLevel     String   // high / medium / low
+  reasoning       String
+  evidenceJson    String   @map("evidence_json")
+  actionFramework String   @map("action_framework")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  event           Event    @relation(fields: [eventId], references: [id])
+  position        Position @relation(fields: [positionId], references: [id])
+  thesis          Thesis   @relation(fields: [thesisId], references: [id])
+  alerts          Alert[]
+}
+
+model Alert {
+  id                String   @id @default(cuid())
+  positionId        String
+  eventId           String?
+  eventAnalysisId   String?
+  level             String   // info / watch / important / urgent
+  title             String
+  summary           String
+  status            String   @default("unread") // unread / read / dismissed
+  sentAt            DateTime @default(now())
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  position          Position @relation(fields: [positionId], references: [id])
+  event             Event?   @relation(fields: [eventId], references: [id])
+  eventAnalysis     EventAnalysis? @relation(fields: [eventAnalysisId], references: [id])
+}

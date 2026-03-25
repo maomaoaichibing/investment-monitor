@@ -8,24 +8,24 @@ export default function PortfolioOverview() {
   const portfolios = [
     {
       id: 1,
-      name: 'Technology Growth',
-      description: 'High-growth tech stocks with AI exposure',
+      name: '科技成长组合',
+      description: 'AI相关高增长科技股',
       positionCount: 6,
       alertCount: 2,
       performance: '+15.2%',
     },
     {
       id: 2,
-      name: 'Defensive Income',
-      description: 'Dividend stocks and defensive sectors',
+      name: '防御性收入组合',
+      description: '股息股票和防御性板块',
       positionCount: 5,
       alertCount: 0,
       performance: '+8.7%',
     },
     {
       id: 3,
-      name: 'China Recovery',
-      description: 'Chinese stocks with recovery potential',
+      name: '中国复苏组合',
+      description: '具复苏潜力的中国股票',
       positionCount: 4,
       alertCount: 1,
       performance: '+5.3%',
@@ -35,10 +35,10 @@ export default function PortfolioOverview() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Portfolio Overview</CardTitle>
+        <CardTitle className="text-lg">组合概览</CardTitle>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/portfolios">
-            View All
+            查看全部
           </Link>
         </Button>
       </CardHeader>
@@ -69,8 +69,8 @@ export default function PortfolioOverview() {
                     )}
                     <span className={`text-sm font-medium ${
                       portfolio.performance.startsWith('+') 
-                        ? 'text-green-600' 
-                        : 'text-red-600'
+                        ? 'text-red-600' 
+                        : 'text-green-600'
                     }`}>
                       {portfolio.performance}
                     </span>
@@ -78,7 +78,7 @@ export default function PortfolioOverview() {
                 </div>
               </div>
               <Button variant="ghost" size="sm">
-                View
+                查看
               </Button>
             </div>
           ))}
@@ -86,7 +86,7 @@ export default function PortfolioOverview() {
           <Button variant="outline" className="w-full" asChild>
             <Link href="/portfolios/new">
               <Plus className="mr-2 h-4 w-4" />
-              Create New Portfolio
+              创建新组合
             </Link>
           </Button>
         </div>

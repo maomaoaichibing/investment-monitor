@@ -163,10 +163,10 @@ export default function AlertsPage() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
             <Bell className="h-8 w-8 text-primary" />
-            Alerts
+            提醒
           </h1>
           <p className="text-muted-foreground">
-            Monitor investment alerts and notifications
+            监控投资提醒和通知
           </p>
         </div>
         <div className="flex gap-2">
@@ -177,7 +177,7 @@ export default function AlertsPage() {
             disabled={refreshing}
           >
             <RotateCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
+            刷新
           </Button>
         </div>
       </div>
@@ -284,21 +284,21 @@ export default function AlertsPage() {
                     
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                       <span className="font-medium">
-                        {alert.position?.symbol || 'Unknown'}
+                        {alert.position?.symbol || '未知'}
                       </span>
-                      <span>{alert.position?.assetName || 'Unknown Asset'}</span>
+                      <span>{alert.position?.assetName || '未知资产'}</span>
                       <span>{formatDateTime(alert.sentAt)}</span>
                       
                       {alert.event && (
                         <span className="flex items-center gap-1">
-                          <span>Event:</span>
+                          <span>事件:</span>
                           <span className="font-medium">{alert.event.title}</span>
                         </span>
                       )}
                       
                       {alert.eventAnalysis && (
                         <span className="flex items-center gap-1">
-                          <span>Impact:</span>
+                          <span>影响:</span>
                           <span className="font-medium">{alert.eventAnalysis.impactLevel}</span>
                         </span>
                       )}

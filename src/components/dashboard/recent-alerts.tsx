@@ -42,7 +42,7 @@ export default function RecentAlerts() {
       }
     } catch (err) {
       console.error('Failed to fetch alerts:', err)
-      setError(err instanceof Error ? err.message : 'Unknown error')
+      setError(err instanceof Error ? err.message : '未知错误')
       setAlerts([])
     } finally {
       setLoading(false)
@@ -53,9 +53,9 @@ export default function RecentAlerts() {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Recent Alerts</CardTitle>
+          <CardTitle className="text-lg">最近提醒</CardTitle>
           <Button variant="ghost" size="sm">
-            View All
+            查看全部
           </Button>
         </CardHeader>
         <CardContent>
@@ -79,14 +79,14 @@ export default function RecentAlerts() {
     return (
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-lg">Recent Alerts</CardTitle>
+          <CardTitle className="text-lg">最近提醒</CardTitle>
           <Button variant="ghost" size="sm" onClick={fetchAlerts}>
-            Retry
+            重试
           </Button>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8 text-muted-foreground">
-            Failed to load alerts: {error}
+            加载提醒失败: {error}
           </div>
         </CardContent>
       </Card>
@@ -96,9 +96,9 @@ export default function RecentAlerts() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Recent Alerts</CardTitle>
+        <CardTitle className="text-lg">最近提醒</CardTitle>
         <Button variant="ghost" size="sm">
-          View All
+          查看全部
         </Button>
       </CardHeader>
       <CardContent>
@@ -124,7 +124,7 @@ export default function RecentAlerts() {
                       {alert.level}
                     </Badge>
                     <span className="text-xs text-muted-foreground">
-                      {alert.position?.symbol || 'Unknown'}
+                      {alert.position?.symbol || '未知'}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">

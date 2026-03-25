@@ -74,7 +74,7 @@ export default async function DashboardStats() {
               {stat.description}
             </p>
             <p className={`text-xs mt-1 ${
-              stat.title === 'Active Alerts' && parseInt(stat.value) > 0 
+              stat.title === '活跃提醒' && parseInt(stat.value) > 0 
                 ? 'text-red-600 dark:text-red-400' 
                 : 'text-green-600 dark:text-green-400'
             }`}>

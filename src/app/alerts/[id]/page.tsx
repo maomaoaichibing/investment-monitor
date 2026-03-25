@@ -223,16 +223,16 @@ export default async function AlertDetailPage({ params }: AlertDetailPageProps) 
                     </p>
                   </div>
                   <div>
-                    <p className="text-sm text-muted-foreground mb-1">Impact Level</p>
+                    <p className="text-sm text-muted-foreground mb-1">影响级别</p>
                     <p className="font-medium capitalize">{alert.eventAnalysis.impactLevel}</p>
                   </div>
                 </div>
                 
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Related Thesis</p>
+                  <p className="text-sm text-muted-foreground mb-1">相关投资论题</p>
                   <Button variant="link" size="sm" className="p-0 h-auto">
                     <Link href={`/thesis/${alert.eventAnalysis.thesisId}`}>
-                      View Thesis
+                      查看论题
                     </Link>
                   </Button>
                 </div>

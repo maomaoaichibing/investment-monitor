@@ -61,7 +61,7 @@ export default function MonitorPlanTestPage() {
   const loadTheses = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/api/theses')
+      const response = await fetch('/api/thesis')
       if (!response.ok) throw new Error('加载失败')
       
       const data = await response.json()

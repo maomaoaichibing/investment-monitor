@@ -163,6 +163,25 @@ export class ThesisService {
 
     return theses
   }
+
+  /**
+   * 获取所有论题（用于测试页面）
+   */
+  async getAllTheses(): Promise<any[]> {
+    const theses = await db.thesis.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        position: {
+          select: {
+            symbol: true,
+            assetName: true
+          }
+        }
+      }
+    })
+
+    return theses
+  }
 }
 
 export const thesisService = new ThesisService()

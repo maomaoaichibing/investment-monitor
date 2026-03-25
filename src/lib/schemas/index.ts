@@ -4,6 +4,12 @@ import { z } from 'zod'
 export const CreatePortfolioSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   description: z.string().max(500).optional(),
+  positions: z.array(z.object({
+    symbol: z.string().min(1),
+    assetName: z.string().min(1),
+    quantity: z.number().positive(),
+    costPrice: z.number().positive(),
+  })).optional(),
 })
 
 export type CreatePortfolioInput = z.infer<typeof CreatePortfolioSchema>

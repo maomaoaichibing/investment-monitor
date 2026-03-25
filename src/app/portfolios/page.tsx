@@ -124,7 +124,7 @@ export default function PortfoliosPage() {
                     {(portfolio._count?.alerts || 0) > 0 && (
                       <Badge variant="outline" className="text-orange-500">
                         <AlertTriangle className="h-3 w-3 mr-1" />
-                        {portfolio._count.alerts} 提醒
+                        {portfolio._count?.alerts || 0} 提醒
                       </Badge>
                     )}
                   </div>

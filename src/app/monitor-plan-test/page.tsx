@@ -39,7 +39,7 @@ interface TestLog {
 
 export default function MonitorPlanTestPage() {
   const [theses, setTheses] = useState<ThesisTestItem[]>([])
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)  // 初始为true，确保首次加载
   const [testLogs, setTestLogs] = useState<TestLog[]>([])
   const [runningTests, setRunningTests] = useState<Set<string>>(new Set())
 

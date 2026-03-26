@@ -1,5 +1,6 @@
 import DashboardStats from '@/components/dashboard/dashboard-stats'
 import RecentAlerts from '@/components/dashboard/recent-alerts'
+import RecentTheses from '@/components/dashboard/recent-theses'
 import PortfolioOverview from '@/components/dashboard/portfolio-overview'
 
 export default function HomePage() {
@@ -14,9 +15,10 @@ export default function HomePage() {
 
       <div className="grid gap-6">
         <DashboardStats />
-        
-        <div className="grid gap-6 md:grid-cols-2">
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <RecentAlerts />
+          <RecentTheses />
           <PortfolioOverview />
         </div>
       </div>

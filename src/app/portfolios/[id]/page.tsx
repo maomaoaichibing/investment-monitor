@@ -3,10 +3,10 @@ import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Briefcase as PortfolioIcon, 
-  Plus, 
-  AlertTriangle, 
+import {
+  Briefcase as PortfolioIcon,
+  Plus,
+  AlertTriangle,
   TrendingUp,
   Calendar,
   DollarSign,
@@ -17,6 +17,7 @@ import {
   Trash2
 } from 'lucide-react'
 import { db } from '@/lib/db'
+import PositionPrices from '@/components/stock/position-prices'
 
 interface PortfolioDetailPageProps {
   params: {
@@ -311,7 +312,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
               <p className="text-xs text-muted-foreground mt-1">个持仓</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">总持仓价值</CardTitle>
@@ -323,14 +324,14 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
               <p className="text-xs text-muted-foreground mt-1">人民币</p>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium">平均持仓权重</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {portfolio.positions.length > 0 
+                {portfolio.positions.length > 0
                   ? (portfolio.positions.reduce((sum, p) => sum + p.positionWeight, 0) / portfolio.positions.length).toFixed(1)
                   : '0'}%
               </div>
@@ -338,6 +339,22 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             </CardContent>
           </Card>
         </div>
+
+        {/* 实时行情 */}
+        {portfolio.positions.length > 0 && (
+          <PositionPrices
+            positions={portfolio.positions.map(p => ({
+              symbol: p.symbol,
+              name: p.assetName,
+              market: p.market,
+              quantity: p.quantity,
+              costPrice: p.costPrice,
+              positionWeight: p.positionWeight
+            }))}
+            autoRefresh={true}
+            refreshInterval={60}
+          />
+        )}
       </div>
     </div>
   )

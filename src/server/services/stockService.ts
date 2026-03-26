@@ -85,10 +85,13 @@ async function fetchFromTencent(symbol: string, market: string): Promise<StockSe
     const change = price - prevClose
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0
 
+    // 去掉后缀，只保留纯symbol（如 AAPL.OQ -> AAPL）
+    const cleanSymbol = (fields[2] || symbol).replace(/\.[A-Z]+$/, '')
+
     return {
       success: true,
       data: {
-        symbol: fields[2] || symbol,
+        symbol: cleanSymbol,
         name: fields[1] || '',
         price,
         change: parseFloat(change.toFixed(2)),
@@ -165,10 +168,13 @@ async function fetchFromSina(symbol: string, market: string): Promise<StockServi
     const change = price - prevClose
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0
 
+    // 去掉后缀，只保留纯symbol
+    const cleanSymbol = symbol.replace(/\.[A-Z]+$/, '')
+
     return {
       success: true,
       data: {
-        symbol,
+        symbol: cleanSymbol,
         name,
         price,
         change: parseFloat(change.toFixed(2)),

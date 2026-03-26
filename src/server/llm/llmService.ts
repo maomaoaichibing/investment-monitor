@@ -1,160 +1,185 @@
-import { ThesisInput, ThesisOutput } from '@/server/services/thesisService'
+import { ThesisInput } from '@/server/services/thesisService'
 import { buildThesisPrompt } from './prompts/thesisPrompt'
-import { ThesisSchema } from '@/lib/schemas/thesisSchema'
+
+// Kimi API 配置
+const KIMI_API_KEY = process.env.KIMI_API_KEY || 'sk-5lKs7u9Q5FTWUpRd8SHneXmNt9ER51puxbyv7rY5I5YjY3oX'
+const KIMI_API_URL = 'https://api.moonshot.cn/v1/chat/completions'
+const KIMI_MODEL = 'moonshot-v1-8k'
 
 export class LLMService {
   /**
-   * 模拟LLM生成投资论题
-   * 实际项目中可替换为OpenAI、Claude等真实API调用
+   * 使用 Kimi LLM 生成投资论题
    */
   async generateThesis(input: ThesisInput): Promise<any> {
     // 构建提示词
     const prompt = buildThesisPrompt(input)
-    
-    // 模拟LLM响应（实际项目中使用真实API）
-    const mockResponse = this.generateMockThesis(input)
-    
-    // 解析响应（实际项目中解析API返回的JSON）
+
     try {
-      // 模拟JSON解析
-      const parsed = JSON.parse(mockResponse)
-      return parsed
+      // 调用 Kimi API
+      const response = await fetch(KIMI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${KIMI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: KIMI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `你是一位专业的投资分析师，擅长分析股票的投资价值。请根据用户提供的股票信息，生成结构化的投资论题。
+
+必须严格按以下JSON格式返回，不要包含任何其他内容：
+{
+  "summary": "简短摘要（50-100字）",
+  "pricePhases": [
+    {"phase": "阶段名称", "description": "阶段描述", "keyLevels": ["关键价位1", "关键价位2"]}
+  ],
+  "coreThesis": [
+    {"title": "论题标题", "description": "论题描述", "conviction": 1-10的整数}
+  ],
+  "fragilePoints": ["脆弱点1", "脆弱点2", "脆弱点3"],
+  "monitorTargets": [
+    {"type": "price|fundamental|technical|event|other", "condition": "触发条件", "action": "建议行动"}
+  ]
+}
+
+注意：
+- monitorTargets中的type必须是：price, fundamental, technical, event, other 之一
+- conviction必须是1-10的数字
+- 返回的必须是合法的JSON格式`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Kimi API error:', response.status, errorText)
+        throw new Error(`Kimi API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // 解析 Kimi 的响应
+      const content = data.choices?.[0]?.message?.content || ''
+      console.log('Kimi raw response:', content)
+
+      // 尝试解析JSON
+      let parsed
+      try {
+        // 尝试直接解析
+        parsed = JSON.parse(content)
+      } catch {
+        // 如果失败，尝试提取JSON块
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+                         content.match(/(\{[\s\S]*\})/)
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[1])
+          } catch {
+            console.warn('Failed to parse JSON from content')
+            return this.generateFallbackThesis(input)
+          }
+        } else {
+          console.warn('No JSON found in response')
+          return this.generateFallbackThesis(input)
+        }
+      }
+
+      // 验证并补充必要字段
+      return this.validateAndFillThesis(parsed, input)
+
     } catch (error) {
-      // 如果解析失败，返回默认结构
-      console.warn('Failed to parse mock response, using fallback')
+      console.error('LLM Service error:', error)
+      // API调用失败时使用fallback
       return this.generateFallbackThesis(input)
     }
   }
 
   /**
-   * 生成模拟的Thesis响应
+   * 验证并填充thesis数据
    */
-  private generateMockThesis(input: ThesisInput): string {
-    const { symbol } = input
-    
-    const templates: Record<string, any> = {
-      'NVDA': {
-        summary: "NVIDIA是AI计算革命的领导者，其GPU产品在数据中心和AI训练领域占据绝对主导地位。核心投资逻辑在于AI基础设施的持续扩张和软件生态的深化。",
-        pricePhases: [
-          {
-            phase: "AI驱动主升浪",
-            description: "受益于全球AI投资热潮，机构资金持续流入",
-            keyLevels: ["$450支撑", "$520阻力"]
-          },
-          {
-            phase: "技术性盘整",
-            description: "估值达到高位后需要时间消化，等待基本面验证",
-            keyLevels: ["$480关键位"]
-          }
-        ],
-        coreThesis: [
-          {
-            title: "AI基础设施核心供应商",
-            description: "NVIDIA GPU是AI训练和推理的黄金标准，生态系统护城河深厚",
-            conviction: 9
-          },
-          {
-            title: "软件转型提升估值",
-            description: "CUDA生态系统和AI软件服务创造高毛利、可持续的收入来源",
-            conviction: 8
-          }
-        ],
-        fragilePoints: [
-          "地缘政治风险（出口管制）",
-          "竞争加剧（AMD、Intel、国产替代）",
-          "估值过高，需要业绩持续超预期支撑",
-          "单一客户依赖（大型云厂商）"
-        ],
-        monitorTargets: [
-          {
-            type: "业绩指引",
-            condition: "下季度数据中心营收增速低于30%",
-            action: "重新评估增长预期"
-          },
-          {
-            type: "技术面",
-            condition: "股价跌破$450关键支撑",
-            action: "部分减仓，等待企稳"
-          },
-          {
-            type: "竞争动态",
-            condition: "AMD MI300系列市场份额超预期",
-            action: "评估竞争格局变化"
-          }
-        ]
-      },
-      'AAPL': {
-        summary: "苹果作为消费电子巨头向服务转型，硬件生态优势带来稳定现金流，服务业务成为第二增长曲线。但面临中国市场压力和创新瓶颈。",
-        pricePhases: [
-          {
-            phase: "盘整期",
-            description: "硬件销售增长放缓，估值修复需要新催化剂",
-            keyLevels: ["$170支撑", "$190阻力"]
-          }
-        ],
-        coreThesis: [
-          {
-            title: "生态系统护城河",
-            description: "硬件+软件+服务的闭环生态创造高用户粘性和转换成本",
-            conviction: 8
-          }
-        ],
-        fragilePoints: [
-          "中国市场销售持续下滑",
-          "智能手机市场饱和",
-          "AI功能落后竞争对手",
-          "监管压力加大"
-        ],
-        monitorTargets: [
-          {
-            type: "中国市场",
-            condition: "大中华区收入同比下降超20%",
-            action: "评估中国市场战略"
-          }
-        ]
-      }
-    }
+  private validateAndFillThesis(data: any, input: ThesisInput): any {
+    const defaultThesis = this.generateFallbackThesis(input)
 
-    // 返回对应模板或默认
-    const template = templates[symbol] || this.generateFallbackThesis(input)
-    return JSON.stringify(template)
+    return {
+      summary: data?.summary || defaultThesis.summary,
+      pricePhases: Array.isArray(data?.pricePhases) && data.pricePhases.length > 0
+        ? data.pricePhases.map((p: any) => ({
+            phase: p.phase || '未知阶段',
+            description: p.description || '',
+            keyLevels: Array.isArray(p.keyLevels) ? p.keyLevels : []
+          }))
+        : defaultThesis.pricePhases,
+      coreThesis: Array.isArray(data?.coreThesis) && data.coreThesis.length > 0
+        ? data.coreThesis.map((t: any) => ({
+            title: t.title || '核心论题',
+            description: t.description || '',
+            conviction: Math.min(10, Math.max(1, parseInt(t.conviction) || 5))
+          }))
+        : defaultThesis.coreThesis,
+      fragilePoints: Array.isArray(data?.fragilePoints) && data.fragilePoints.length > 0
+        ? data.fragilePoints.slice(0, 5)
+        : defaultThesis.fragilePoints,
+      monitorTargets: Array.isArray(data?.monitorTargets) && data.monitorTargets.length > 0
+        ? data.monitorTargets.slice(0, 4).map((t: any) => ({
+            type: ['price', 'fundamental', 'technical', 'event', 'other'].includes(t.type)
+              ? t.type
+              : 'other',
+            condition: t.condition || '',
+            action: t.action || ''
+          }))
+        : defaultThesis.monitorTargets
+    }
   }
 
   /**
-   * 生成默认的Thesis结构
+   * 生成默认的Thesis结构（Fallback）
    */
   private generateFallbackThesis(input: ThesisInput): any {
     return {
-      summary: `基于${input.assetName}(${input.symbol})的基本面和技术面分析，存在结构性投资机会。`,
+      summary: `基于${input.assetName}(${input.symbol})的基本面和技术面分析，存在结构性投资机会。建议关注公司核心竞争力和行业趋势。`,
       pricePhases: [
         {
-          phase: "当前阶段",
-          description: "价格处于合理区间，等待催化剂",
+          phase: "当前价格区间",
+          description: "价格处于合理估值区间，等待市场催化剂",
           keyLevels: ["关键支撑位", "重要阻力位"]
         }
       ],
       coreThesis: [
         {
           title: "核心投资逻辑",
-          description: "标的在所处行业中具有相对优势或独特价值",
+          description: `${input.assetName}在所处行业中具有相对优势或独特价值，值得长期关注`,
           conviction: 6
         }
       ],
       fragilePoints: [
-        "宏观经济风险",
+        "宏观经济不确定性风险",
         "行业竞争加剧",
-        "政策变化不确定性"
+        "政策监管变化",
+        "估值波动风险"
       ],
       monitorTargets: [
         {
-          type: "价格监控",
-          condition: "跌破关键技术位",
-          action: "重新评估持仓理由"
+          type: "price",
+          condition: "股价跌破关键技术支撑位",
+          action: "重新评估持仓风险"
         },
         {
-          type: "基本面",
-          condition: "季度业绩不及预期",
-          action: "调整盈利预期"
+          type: "fundamental",
+          condition: "季度业绩大幅不及预期",
+          action: "调整盈利预测"
+        },
+        {
+          type: "event",
+          condition: "行业重大政策变化",
+          action: "评估对公司的影响"
         }
       ]
     }

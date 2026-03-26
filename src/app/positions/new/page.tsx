@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,8 +9,15 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ArrowLeft, Plus, Loader2, Briefcase } from 'lucide-react'
+import { ArrowLeft, Plus, Loader2, Briefcase, Upload, Camera, Scan, X } from 'lucide-react'
 import Link from 'next/link'
+
+interface OcrResult {
+  symbol: string
+  name: string
+  quantity: number
+  price: number
+}
 
 interface Portfolio {
   id: string
@@ -38,9 +45,19 @@ interface NewPortfolioData {
 
 export default function NewPositionPage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingPortfolios, setIsLoadingPortfolios] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // OCR 状态
+  const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrError, setOcrError] = useState('')
+  const [ocrSuccess, setOcrSuccess] = useState(false)
+  const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [ocrResults, setOcrResults] = useState<OcrResult[]>([])
   const [portfolios, setPortfolios] = useState<Portfolio[]>([])
   const [selectedPortfolioId, setSelectedPortfolioId] = useState<string>('')
   const [showNewPortfolio, setShowNewPortfolio] = useState(false)
@@ -118,6 +135,99 @@ export default function NewPositionPage() {
     } finally {
       setCreatingPortfolio(false)
     }
+  }
+
+  // 处理文件选择
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setOcrError('')
+    setOcrSuccess(false)
+    setPreviewImage(URL.createObjectURL(file))
+    await processOCR(file)
+  }
+
+  // 处理相机拍照
+  const handleCameraCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setOcrError('')
+    setOcrSuccess(false)
+    setPreviewImage(URL.createObjectURL(file))
+    await processOCR(file)
+  }
+
+  // 调用 OCR API 识别持仓
+  const processOCR = async (file: File) => {
+    setOcrLoading(true)
+    setOcrError('')
+
+    try {
+      const formDataOCR = new FormData()
+      formDataOCR.append('file', file)
+
+      const response = await fetch('/api/ocr/recognize', {
+        method: 'POST',
+        body: formDataOCR
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || 'OCR识别失败')
+      }
+
+      // 解析识别结果
+      if (result.positions && result.positions.length > 0) {
+        setOcrResults(result.positions)
+        setOcrSuccess(true)
+
+        // 如果只识别到一个标的，自动填充表单
+        if (result.positions.length === 1) {
+          const p = result.positions[0]
+          setFormData(prev => ({
+            ...prev,
+            symbol: p.symbol || '',
+            assetName: p.name || p.assetName || '',
+            quantity: p.quantity?.toString() || '',
+            costPrice: p.price || p.costPrice || '',
+          }))
+        }
+      } else {
+        setOcrError('未识别到持仓信息，请确保图片清晰或手动输入')
+        setOcrResults([])
+      }
+
+    } catch (err: any) {
+      setOcrError(err.message || 'OCR识别失败，请重试')
+      setOcrResults([])
+    } finally {
+      setOcrLoading(false)
+    }
+  }
+
+  // 选择OCR识别结果填充表单
+  const selectOcrResult = (result: OcrResult) => {
+    setFormData(prev => ({
+      ...prev,
+      symbol: result.symbol || '',
+      assetName: result.name || '',
+      quantity: result.quantity?.toString() || '',
+      costPrice: result.price?.toString() || '',
+    }))
+    setOcrSuccess(false)
+    setPreviewImage(null)
+    setOcrResults([])
+  }
+
+  // 清除OCR结果
+  const clearOcrResults = () => {
+    setOcrSuccess(false)
+    setPreviewImage(null)
+    setOcrResults([])
+    setOcrError('')
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -296,12 +406,145 @@ export default function NewPositionPage() {
           </CardContent>
         </Card>
 
+        {/* OCR 识别卡片 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Scan className="h-5 w-5" />
+              OCR 识别标的
+            </CardTitle>
+            <CardDescription>
+              上传持仓截图或拍照，自动识别股票代码和名称
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* 图片预览 */}
+            {previewImage && (
+              <div className="relative mb-4">
+                <img
+                  src={previewImage}
+                  alt="预览"
+                  className="max-h-48 rounded-lg border"
+                />
+                <button
+                  type="button"
+                  onClick={clearOcrResults}
+                  className="absolute top-2 right-2 bg-black/50 text-white rounded-full p-1"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
+
+            {/* OCR 识别结果 */}
+            {ocrSuccess && ocrResults.length > 0 && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-medium text-green-800">
+                    识别到 {ocrResults.length} 个标的
+                  </p>
+                  <Button variant="ghost" size="sm" onClick={clearOcrResults}>
+                    清除
+                  </Button>
+                </div>
+                <div className="space-y-2">
+                  {ocrResults.map((result, index) => (
+                    <div
+                      key={index}
+                      className="flex items-center justify-between bg-white rounded p-2 cursor-pointer hover:bg-green-100"
+                      onClick={() => selectOcrResult(result)}
+                    >
+                      <div>
+                        <span className="font-medium">{result.symbol}</span>
+                        <span className="ml-2 text-muted-foreground">{result.name}</span>
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {result.quantity > 0 && <span>数量: {result.quantity}</span>}
+                        {result.price > 0 && <span className="ml-2">价格: {result.price}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {ocrResults.length > 1 && (
+                  <p className="text-xs text-green-700 mt-2">
+                    点击选择一个标的填充到表单，或手动编辑后创建
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* OCR 加载状态 */}
+            {ocrLoading && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                <span className="text-muted-foreground">正在识别...</span>
+              </div>
+            )}
+
+            {/* OCR 错误提示 */}
+            {ocrError && (
+              <Alert variant="destructive">
+                <X className="h-4 w-4" />
+                <AlertDescription>{ocrError}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* 上传按钮 */}
+            {!ocrLoading && (
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  上传图片
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => cameraInputRef.current?.click()}
+                >
+                  <Camera className="h-4 w-4 mr-2" />
+                  拍照识别
+                </Button>
+              </div>
+            )}
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <input
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={handleCameraCapture}
+              className="hidden"
+            />
+
+            {/* 识别说明 */}
+            <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
+              <p className="font-medium mb-1">支持识别以下内容：</p>
+              <ul className="list-disc list-inside space-y-1">
+                <li>券商APP持仓截图</li>
+                <li>股票代码和名称</li>
+                <li>持仓数量和成本价</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* 标的表单 */}
         <Card>
           <CardHeader>
             <CardTitle>标的详情</CardTitle>
             <CardDescription>
-              填写投资标的的基本信息
+              填写投资标的的基本信息（可从上方OCR识别或手动输入）
             </CardDescription>
           </CardHeader>
           <CardContent>

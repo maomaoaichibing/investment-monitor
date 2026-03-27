@@ -49,6 +49,7 @@ model Thesis {
   title            String
   summary          String
   content          String
+  healthScore      Float?  @default(80) // 论点健康度(0-100)
   investmentStyle  String   @default("growth") // growth / value / quality / momentum
   holdingPeriod    String   @default("long_term") // short_term / medium_term / long_term
   pricePhasesJson  String   @map("price_phases_json")

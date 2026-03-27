@@ -7,8 +7,11 @@ export interface ThesisInput {
   symbol: string
   assetName: string
   market: string
-  investmentThesis?: string | null // 新增：投资理由
+  investmentThesis?: string | null // 投资理由
   note?: string | null // 兼容旧字段
+  direction?: string // 持仓方向：做多/做空
+  buyPrice?: number | null // 买入价格
+  holdingPeriod?: string // 持有周期
 }
 
 export class ThesisService {
@@ -63,12 +66,17 @@ export class ThesisService {
       symbol: position.symbol,
       assetName: position.assetName,
       market: position.market,
-      investmentThesis: position.investmentThesis
+      investmentThesis: position.investmentThesis,
+      direction: '做多', // 默认做多
+      buyPrice: position.costPrice,
+      holdingPeriod: position.holdingStyle || 'long_term'
     }
 
     // 5. 调用LLM生成论题
+    console.log(`[Thesis] Generating thesis for ${position.assetName} (${position.symbol})...`)
     const rawOutput = await llmService.generateThesis(thesisInput)
-    
+    console.log(`[Thesis] Generated thesis with ${rawOutput.pillars?.length || 0} pillars, health score: ${rawOutput.overallHealthScore || 'N/A'}`)
+
     // 6. 使用Zod校验输出
     const validatedThesis = ThesisSchema.parse(rawOutput)
 
@@ -80,8 +88,9 @@ export class ThesisService {
         title: `${position.assetName}(${position.symbol})投资议题`,
         summary: rawOutput.thesisSummary || rawOutput.summary || `${position.assetName}投资分析`,
         content: rawOutput.thesisSummary || rawOutput.summary || '',
+        healthScore: rawOutput.overallHealthScore || 80, // 存入健康度分数
         investmentStyle: 'growth',
-        holdingPeriod: 'long_term',
+        holdingPeriod: position.holdingStyle || 'long_term',
         pricePhasesJson: JSON.stringify(rawOutput.pricePhases || []),
         coreThesisJson: JSON.stringify(rawOutput.pillars || rawOutput.coreThesis || []),
         fragilePointsJson: JSON.stringify(rawOutput.fragilePoints || []),

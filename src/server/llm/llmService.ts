@@ -1,6 +1,7 @@
 import { ThesisInput } from '@/server/services/thesisService'
 import { buildThesisPrompt } from './prompts/thesisPrompt'
 import { generateMonitorPlanPrompt } from './prompts/monitorPlanPrompt'
+import { buildAlertImpactPrompt } from './prompts/alertImpactPrompt'
 import { monitorPlanSchema } from '@/lib/schemas/monitorPlanSchema'
 
 // Kimi API 配置
@@ -129,30 +130,41 @@ export class LLMService {
   private validateAndFillThesis(data: any, input: ThesisInput): any {
     const defaultThesis = this.generateFallbackThesis(input)
 
-    // 处理议题树格式
+    // 处理议题树格式（增强版 - 支持 #1 Prompt 的新字段）
     const pillars = Array.isArray(data?.pillars) && data.pillars.length > 0
       ? data.pillars.map((p: any, idx: number) => ({
-          id: p.id || idx + 1,
-          name: p.name || `议题${idx + 1}`,
-          coreAssumption: p.coreAssumption || '',
+          id: p.pillar_id || p.id || idx + 1,
+          name: p.pillar_name || p.name || `议题${idx + 1}`,
+          coreAssumption: p.core_assumption || p.coreAssumption || '',
           conviction: Math.min(10, Math.max(1, parseInt(p.conviction) || 5)),
-          monitorIndicators: Array.isArray(p.monitorIndicators)
+          monitorIndicators: Array.isArray(p.monitorIndicators) && p.monitorIndicators.length > 0
             ? p.monitorIndicators.slice(0, 4).map((i: any) => ({
-                name: i.name || '',
+                name: i.indicator_name || i.name || '',
                 type: ['fundamental', 'industry', 'macro', 'technical', 'sentiment', 'price'].includes(i.type)
                   ? i.type : 'fundamental',
-                frequency: ['realtime', 'daily', 'weekly', 'monthly', 'quarterly'].includes(i.frequency)
+                frequency: ['realtime', 'daily', 'weekly', 'monthly', 'quarterly', 'event'].includes(i.frequency)
                   ? i.frequency : 'weekly',
-                dataSource: i.dataSource || ''
+                dataSource: i.data_source || i.dataSource || '',
+                dataType: i.data_type || i.dataType || 'stock_price'
               }))
             : [],
-          bullishSignal: p.bullishSignal || '',
-          riskTrigger: p.riskTrigger || ''
+          bullishSignal: p.bullish_signal || p.bullishSignal || '',
+          riskTrigger: p.risk_trigger || p.riskTrigger || '',
+          impactWeight: p.impact_weight || p.impactWeight || Math.floor(100 / (data.pillars.length || 1))
         }))
       : defaultThesis.pillars
 
+    // 计算权重归一化（确保总和为100）
+    const totalWeight = pillars.reduce((sum: number, p: any) => sum + (p.impactWeight || 0), 0)
+    if (totalWeight > 0 && Math.abs(totalWeight - 100) > 1) {
+      pillars.forEach((p: any) => {
+        p.impactWeight = Math.round((p.impactWeight / totalWeight) * 100)
+      })
+    }
+
     return {
-      thesisSummary: data?.thesisSummary || defaultThesis.thesisSummary,
+      thesisSummary: data?.thesis_summary || data?.thesisSummary || defaultThesis.thesisSummary,
+      overallHealthScore: data?.overall_health_score || data?.overallHealthScore || 80,
       pillars,
       pricePhases: Array.isArray(data?.pricePhases) && data.pricePhases.length > 0
         ? data.pricePhases.map((p: any) => ({
@@ -494,6 +506,127 @@ export class LLMService {
         "行业竞争加剧",
         "政策变化"
       ]
+    }
+  }
+
+  /**
+   * #2: 使用 Kimi LLM 分析数据异常对投资论点的影响
+   */
+  async analyzeAlertImpact(params: {
+    stockCode: string
+    stockName: string
+    direction: string
+    thesisSummary: string
+    currentHealthScore: number
+    pillarName: string
+    coreAssumption: string
+    bullishSignal: string
+    riskTrigger: string
+    indicatorName: string
+    changeDescription: string
+    dataSource: string
+    dataTime: string
+  }): Promise<any> {
+    const prompt = buildAlertImpactPrompt(params)
+
+    try {
+      const response = await fetch(KIMI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${KIMI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: KIMI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `你是一位专业的投资逻辑审计员。你的任务是判断新数据对投资论点的影响，保持客观，不要过度解读单一数据点。`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Kimi API error:', response.status, errorText)
+        throw new Error(`Kimi API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || ''
+      console.log('Kimi AlertImpact raw response:', content)
+
+      // 解析 JSON
+      let parsed
+      try {
+        parsed = JSON.parse(content)
+      } catch {
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+                         content.match(/(\{[\s\S]*\})/)
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[1])
+          } catch {
+            console.warn('Failed to parse JSON from content')
+            return this.generateFallbackAlertImpact(params)
+          }
+        } else {
+          console.warn('No JSON found in response')
+          return this.generateFallbackAlertImpact(params)
+        }
+      }
+
+      // 验证并填充
+      return this.validateAndFillAlertImpact(parsed, params)
+
+    } catch (error) {
+      console.error('LLM AlertImpact error:', error)
+      return this.generateFallbackAlertImpact(params)
+    }
+  }
+
+  /**
+   * 验证并填充 AlertImpact 数据
+   */
+  private validateAndFillAlertImpact(data: any, params: any): any {
+    const defaultImpact = this.generateFallbackAlertImpact(params)
+
+    return {
+      impactDirection: ['bullish', 'neutral', 'bearish'].includes(data?.impact_direction)
+        ? data.impact_direction : 'neutral',
+      impactScore: Math.min(10, Math.max(1, parseInt(data?.impact_score) || 5)),
+      reasoning: data?.reasoning || defaultImpact.reasoning,
+      assumptionStatus: ['intact', 'weakened', 'falsified'].includes(data?.assumption_status)
+        ? data.assumption_status : 'intact',
+      suggestedAction: data?.suggested_action || defaultImpact.suggestedAction,
+      newHealthScore: Math.min(100, Math.max(0, parseInt(data?.new_health_score) || params.currentHealthScore)),
+      healthScoreChange: parseInt(data?.health_score_change) || 0,
+      followUpWatch: data?.follow_up_watch || defaultImpact.followUpWatch,
+      alertLevel: ['info', 'warning', 'critical'].includes(data?.alert_level)
+        ? data.alert_level : 'info'
+    }
+  }
+
+  /**
+   * 生成默认的 AlertImpact 结构（Fallback）
+   */
+  private generateFallbackAlertImpact(params: any): any {
+    return {
+      impactDirection: 'neutral',
+      impactScore: 5,
+      reasoning: `数据变化（${params.indicatorName}: ${params.changeDescription}）需要进一步观察。`,
+      assumptionStatus: 'intact',
+      suggestedAction: '密切关注',
+      newHealthScore: params.currentHealthScore,
+      healthScoreChange: 0,
+      followUpWatch: '等待下一个关键数据节点验证',
+      alertLevel: 'info'
     }
   }
 }

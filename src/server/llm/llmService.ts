@@ -2,6 +2,7 @@ import { ThesisInput } from '@/server/services/thesisService'
 import { buildThesisPrompt } from './prompts/thesisPrompt'
 import { generateMonitorPlanPrompt } from './prompts/monitorPlanPrompt'
 import { buildAlertImpactPrompt } from './prompts/alertImpactPrompt'
+import { buildDailySummaryPrompt } from './prompts/dailySummaryPrompt'
 import { monitorPlanSchema } from '@/lib/schemas/monitorPlanSchema'
 
 // Kimi API 配置
@@ -627,6 +628,108 @@ export class LLMService {
       healthScoreChange: 0,
       followUpWatch: '等待下一个关键数据节点验证',
       alertLevel: 'info'
+    }
+  }
+
+  /**
+   * #3: 使用 Kimi LLM 生成每日/每周投资监控简报
+   */
+  async generateDailySummary(params: {
+    portfoliosJson: string
+    todayDataChangesJson: string
+  }): Promise<any> {
+    const prompt = buildDailySummaryPrompt(params)
+
+    try {
+      const response = await fetch(KIMI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${KIMI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: KIMI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `你是用户的私人投资顾问助理，负责生成每日投资监控简报。语言简洁有力。`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Kimi API error:', response.status, errorText)
+        throw new Error(`Kimi API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || ''
+      console.log('Kimi DailySummary raw response:', content)
+
+      // 解析 JSON
+      let parsed
+      try {
+        parsed = JSON.parse(content)
+      } catch {
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+                         content.match(/(\{[\s\S]*\})/)
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[1])
+          } catch {
+            console.warn('Failed to parse JSON from content')
+            return this.generateFallbackDailySummary()
+          }
+        } else {
+          console.warn('No JSON found in response')
+          return this.generateFallbackDailySummary()
+        }
+      }
+
+      // 验证并填充
+      return this.validateAndFillDailySummary(parsed)
+
+    } catch (error) {
+      console.error('LLM DailySummary error:', error)
+      return this.generateFallbackDailySummary()
+    }
+  }
+
+  /**
+   * 验证并填充 DailySummary 数据
+   */
+  private validateAndFillDailySummary(data: any): any {
+    const today = new Date().toISOString().split('T')[0]
+
+    return {
+      date: data?.date || today,
+      summary: data?.summary || '今日投资组合整体稳定，论点健康度良好。',
+      criticalAlerts: Array.isArray(data?.critical_alerts) ? data.critical_alerts : [],
+      notableChanges: Array.isArray(data?.notable_changes) ? data.notable_changes : [],
+      noChangeStocks: Array.isArray(data?.no_change_stocks) ? data.no_change_stocks : [],
+      upcomingEvents: Array.isArray(data?.upcoming_events) ? data.upcoming_events : []
+    }
+  }
+
+  /**
+   * 生成默认的 DailySummary 结构（Fallback）
+   */
+  private generateFallbackDailySummary(): any {
+    const today = new Date().toISOString().split('T')[0]
+    return {
+      date: today,
+      summary: '今日投资组合整体稳定，论点健康度良好。',
+      criticalAlerts: [],
+      notableChanges: [],
+      noChangeStocks: [],
+      upcomingEvents: []
     }
   }
 }

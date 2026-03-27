@@ -46,54 +46,35 @@ export class MockLLMProviderImpl extends BaseLLMProvider implements MockLLMProvi
 
   private generateMockThesis(): ThesisOutput {
     return {
-      lookbackWindow: '12m',
-      summary: '过去12个月该标的主要由业绩修复和行业景气改善驱动上涨。公司季度利润连续改善，行业需求稳步增长，估值从底部修复。',
-      pricePhases: [
+      thesisSummary: '公司具有良好的投资价值，业绩稳定增长，估值合理',
+      pillars: [
         {
-          period: '2025-01 to 2025-04',
-          direction: 'up',
-          drivers: ['行业需求改善', '利润率回升'],
-          evidence: ['月度销量改善', '毛利率提升2个百分点']
+          id: 1,
+          name: '业绩增长',
+          coreAssumption: '公司季度营收保持15%以上增速',
+          conviction: 7,
+          monitorIndicators: [
+            { name: '季度营收增速', type: 'fundamental', frequency: 'quarterly' },
+            { name: '毛利率变化', type: 'fundamental', frequency: 'quarterly' }
+          ],
+          bullishSignal: '营收和利润持续增长',
+          riskTrigger: '核心业务增速放缓'
         },
         {
-          period: '2025-05 to 2025-08',
-          direction: 'neutral',
-          drivers: ['市场情绪波动', '政策不确定性'],
-          evidence: ['成交量萎缩', '政策预期调整']
-        },
-        {
-          period: '2025-09 to 2025-12',
-          direction: 'up',
-          drivers: ['新产品发布', '成本下降'],
-          evidence: ['新订单增长', '单位成本下降5%']
+          id: 2,
+          name: '行业地位',
+          coreAssumption: '市占率稳步提升',
+          conviction: 6,
+          monitorIndicators: [
+            { name: '市场份额', type: 'industry', frequency: 'quarterly' }
+          ],
+          bullishSignal: '竞争对手出现问题',
+          riskTrigger: '新进入者威胁'
         }
-      ],
-      coreThesis: [
-        '市场核心交易逻辑是盈利修复和估值重估',
-        '行业景气度改善是本轮上涨的主要驱动力',
-        '新产品线有望带来第二增长曲线'
       ],
       fragilePoints: [
-        '若行业高频数据转弱，则逻辑弱化',
-        '若利润率不及预期，则估值支撑减弱',
-        '新产品市场接受度存在不确定性'
-      ],
-      monitorTargets: [
-        {
-          name: '季度利润率',
-          type: 'fundamental',
-          why: '盈利修复是核心逻辑验证点'
-        },
-        {
-          name: '行业月度销量',
-          type: 'industry',
-          why: '行业景气是景气驱动的重要证据'
-        },
-        {
-          name: '新产品订单量',
-          type: 'fundamental',
-          why: '新增长曲线验证'
-        }
+        '宏观经济不确定性',
+        '行业竞争加剧'
       ]
     }
   }

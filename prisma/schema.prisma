@@ -31,7 +31,7 @@ model Position {
   costPrice       Float
   positionWeight  Float
   holdingStyle    String  // short_term / swing / long_term
-  note            String?
+  investmentThesis String?  // 投资理由/逻辑
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -55,6 +55,7 @@ model Thesis {
   coreThesisJson   String   @map("core_thesis_json")
   fragilePointsJson String   @map("fragile_points_json")
   monitorTargetsJson String @map("monitor_targets_json")
+  pillarsJson       String?  @map("pillars_json") // 议题树JSON
   status           String   @default("generated") // generated / pending / failed
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

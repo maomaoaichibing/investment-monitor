@@ -7,27 +7,8 @@ export interface ThesisInput {
   symbol: string
   assetName: string
   market: string
-  note?: string | null
-}
-
-export interface ThesisOutput {
-  summary: string
-  pricePhases: {
-    phase: string
-    description: string
-    keyLevels?: string[]
-  }[]
-  coreThesis: {
-    title: string
-    description: string
-    conviction: number // 1-10
-  }[]
-  fragilePoints: string[]
-  monitorTargets: {
-    type: string
-    condition: string
-    action: string
-  }[]
+  investmentThesis?: string | null // 新增：投资理由
+  note?: string | null // 兼容旧字段
 }
 
 export class ThesisService {
@@ -82,7 +63,7 @@ export class ThesisService {
       symbol: position.symbol,
       assetName: position.assetName,
       market: position.market,
-      note: position.note
+      investmentThesis: position.investmentThesis
     }
 
     // 5. 调用LLM生成论题
@@ -96,15 +77,16 @@ export class ThesisService {
       data: {
         positionId: position.id,
         portfolioId: position.portfolioId,
-        title: `${position.symbol}投资论题`,
-        summary: validatedThesis.summary,
-        content: validatedThesis.summary, // 暂时使用summary作为content
+        title: `${position.assetName}(${position.symbol})投资议题`,
+        summary: rawOutput.thesisSummary || rawOutput.summary || `${position.assetName}投资分析`,
+        content: rawOutput.thesisSummary || rawOutput.summary || '',
         investmentStyle: 'growth',
         holdingPeriod: 'long_term',
-        pricePhasesJson: JSON.stringify(validatedThesis.pricePhases),
-        coreThesisJson: JSON.stringify(validatedThesis.coreThesis),
-        fragilePointsJson: JSON.stringify(validatedThesis.fragilePoints),
-        monitorTargetsJson: JSON.stringify(validatedThesis.monitorTargets),
+        pricePhasesJson: JSON.stringify(rawOutput.pricePhases || []),
+        coreThesisJson: JSON.stringify(rawOutput.pillars || rawOutput.coreThesis || []),
+        fragilePointsJson: JSON.stringify(rawOutput.fragilePoints || []),
+        monitorTargetsJson: JSON.stringify(rawOutput.monitorTargets || []),
+        pillarsJson: JSON.stringify(rawOutput.pillars || null),
         status: 'generated'
       }
     })

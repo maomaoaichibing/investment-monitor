@@ -40,7 +40,7 @@ async function main() {
       costPrice: 450.50,
       positionWeight: 25.0,
       holdingStyle: 'long_term',
-      note: 'AI chip leader with strong growth prospects',
+      investmentThesis: 'AI chip leader with strong growth prospects',
     },
   })
 
@@ -54,7 +54,7 @@ async function main() {
       costPrice: 180.25,
       positionWeight: 15.0,
       holdingStyle: 'long_term',
-      note: 'Strong ecosystem and services growth',
+      investmentThesis: 'Strong ecosystem and services growth',
     },
   })
 
@@ -68,7 +68,7 @@ async function main() {
       costPrice: 4.25,
       positionWeight: 30.0,
       holdingStyle: 'swing',
-      note: '黄金避险资产，对冲市场波动',
+      investmentThesis: '黄金避险资产，对冲市场波动',
     },
   })
 

@@ -32,7 +32,7 @@ export default function CreatePositionForm({ portfolioId, onSuccess, onCancel }:
     costPrice: '',
     positionWeight: '',
     holdingStyle: 'long_term' as const,
-    note: '',
+    investmentThesis: '',
   })
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -91,7 +91,7 @@ export default function CreatePositionForm({ portfolioId, onSuccess, onCancel }:
         costPrice: '',
         positionWeight: '',
         holdingStyle: 'long_term',
-        note: '',
+        investmentThesis: '',
       })
 
     } catch (err) {
@@ -253,18 +253,24 @@ export default function CreatePositionForm({ portfolioId, onSuccess, onCancel }:
           </div>
         </div>
 
-        {/* 备注 */}
+        {/* 投资理由 - 核心字段，放在更显眼的位置 */}
         <div className="space-y-2">
-          <Label htmlFor="note">备注</Label>
+          <Label htmlFor="investmentThesis">
+            投资理由 <span className="text-xs text-muted-foreground">(AI分析核心输入)</span>
+          </Label>
           <Textarea
-            id="note"
-            name="note"
-            value={formData.note}
+            id="investmentThesis"
+            name="investmentThesis"
+            value={formData.investmentThesis}
             onChange={handleInputChange}
-            placeholder="持仓理由、投资逻辑等..."
-            rows={3}
+            placeholder="描述您的投资逻辑，例如：看好储能出海逻辑，欧洲需求爆发，公司市占率持续提升..."
+            rows={4}
             disabled={isLoading}
+            className="border-primary/50 focus:border-primary"
           />
+          <p className="text-xs text-muted-foreground">
+            请详细描述您的投资理由，这将帮助AI生成更精准的监控框架
+          </p>
         </div>
 
         {/* 按钮 */}

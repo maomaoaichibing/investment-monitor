@@ -27,27 +27,46 @@ export class LLMService {
           messages: [
             {
               role: 'system',
-              content: `你是一位专业的投资分析师，擅长分析股票的投资价值。请根据用户提供的股票信息，生成结构化的投资论题。
+              content: `你是一位专业的投资研究分析师。你的任务是基于用户提供的"投资理由"，深度分析并生成一份"投资逻辑监控框架"（议题树）。
 
-必须严格按以下JSON格式返回，不要包含任何其他内容：
+【核心概念】
+- 议题树(Pillars)：把一个持仓的投资逻辑拆解成3-5个核心议题，每个议题都是可以被数据验证或证伪的假设
+- 每个议题包含：核心假设、监控指标、看多信号、风险触发条件
+
+【输出格式 - 必须严格按此JSON格式】
 {
-  "summary": "简短摘要（50-100字）",
+  "thesisSummary": "一句话总结核心投资逻辑（30字内）",
+  "pillars": [
+    {
+      "id": 1,
+      "name": "议题名称，如：欧洲储能需求",
+      "coreAssumption": "可证伪的具体假设，如：2025年欧洲储能装机量同比增长>40%",
+      "conviction": 1-10,
+      "monitorIndicators": [
+        {
+          "name": "指标名称，如：欧洲储能月度装机量",
+          "type": "fundamental|industry|macro|technical|sentiment|price",
+          "frequency": "realtime|daily|weekly|monthly|quarterly",
+          "dataSource": "可选的数据来源建议"
+        }
+      ],
+      "bullishSignal": "什么数据/事件说明逻辑成立",
+      "riskTrigger": "什么数据/事件说明逻辑可能失效"
+    }
+  ],
+  "fragilePoints": ["风险点1", "风险点2"],
   "pricePhases": [
-    {"phase": "阶段名称", "description": "阶段描述", "keyLevels": ["关键价位1", "关键价位2"]}
-  ],
-  "coreThesis": [
-    {"title": "论题标题", "description": "论题描述", "conviction": 1-10的整数}
-  ],
-  "fragilePoints": ["脆弱点1", "脆弱点2", "脆弱点3"],
-  "monitorTargets": [
-    {"type": "price|fundamental|technical|event|other", "condition": "触发条件", "action": "建议行动"}
+    {"period": "阶段", "description": "描述", "keyLevels": ["关键价位"]}
   ]
 }
 
-注意：
-- monitorTargets中的type必须是：price, fundamental, technical, event, other 之一
-- conviction必须是1-10的数字
-- 返回的必须是合法的JSON格式`
+【重要规则】
+1. pillars必须返回3-5个议题
+2. 每个议题的monitorIndicators必须包含2-4个具体指标
+3. conviction是1-10的数字，表示对这个议题的信心度
+4. 所有type必须是：fundamental, industry, macro, technical, sentiment, price 之一
+5. frequency必须是：realtime, daily, weekly, monthly, quarterly 之一
+6. 只返回JSON，不要包含任何解释或其他内容`
             },
             {
               role: 'user',
@@ -108,34 +127,41 @@ export class LLMService {
   private validateAndFillThesis(data: any, input: ThesisInput): any {
     const defaultThesis = this.generateFallbackThesis(input)
 
+    // 处理议题树格式
+    const pillars = Array.isArray(data?.pillars) && data.pillars.length > 0
+      ? data.pillars.map((p: any, idx: number) => ({
+          id: p.id || idx + 1,
+          name: p.name || `议题${idx + 1}`,
+          coreAssumption: p.coreAssumption || '',
+          conviction: Math.min(10, Math.max(1, parseInt(p.conviction) || 5)),
+          monitorIndicators: Array.isArray(p.monitorIndicators)
+            ? p.monitorIndicators.slice(0, 4).map((i: any) => ({
+                name: i.name || '',
+                type: ['fundamental', 'industry', 'macro', 'technical', 'sentiment', 'price'].includes(i.type)
+                  ? i.type : 'fundamental',
+                frequency: ['realtime', 'daily', 'weekly', 'monthly', 'quarterly'].includes(i.frequency)
+                  ? i.frequency : 'weekly',
+                dataSource: i.dataSource || ''
+              }))
+            : [],
+          bullishSignal: p.bullishSignal || '',
+          riskTrigger: p.riskTrigger || ''
+        }))
+      : defaultThesis.pillars
+
     return {
-      summary: data?.summary || defaultThesis.summary,
+      thesisSummary: data?.thesisSummary || defaultThesis.thesisSummary,
+      pillars,
       pricePhases: Array.isArray(data?.pricePhases) && data.pricePhases.length > 0
         ? data.pricePhases.map((p: any) => ({
-            phase: p.phase || '未知阶段',
+            period: p.period || p.phase || '未知阶段',
             description: p.description || '',
             keyLevels: Array.isArray(p.keyLevels) ? p.keyLevels : []
           }))
         : defaultThesis.pricePhases,
-      coreThesis: Array.isArray(data?.coreThesis) && data.coreThesis.length > 0
-        ? data.coreThesis.map((t: any) => ({
-            title: t.title || '核心论题',
-            description: t.description || '',
-            conviction: Math.min(10, Math.max(1, parseInt(t.conviction) || 5))
-          }))
-        : defaultThesis.coreThesis,
       fragilePoints: Array.isArray(data?.fragilePoints) && data.fragilePoints.length > 0
         ? data.fragilePoints.slice(0, 5)
         : defaultThesis.fragilePoints,
-      monitorTargets: Array.isArray(data?.monitorTargets) && data.monitorTargets.length > 0
-        ? data.monitorTargets.slice(0, 4).map((t: any) => ({
-            type: ['price', 'fundamental', 'technical', 'event', 'other'].includes(t.type)
-              ? t.type
-              : 'other',
-            condition: t.condition || '',
-            action: t.action || ''
-          }))
-        : defaultThesis.monitorTargets
     }
   }
 
@@ -144,43 +170,44 @@ export class LLMService {
    */
   private generateFallbackThesis(input: ThesisInput): any {
     return {
-      summary: `基于${input.assetName}(${input.symbol})的基本面和技术面分析，存在结构性投资机会。建议关注公司核心竞争力和行业趋势。`,
-      pricePhases: [
+      thesisSummary: `${input.assetName}具有良好的投资价值，建议关注基本面变化`,
+      pillars: [
         {
-          phase: "当前价格区间",
-          description: "价格处于合理估值区间，等待市场催化剂",
-          keyLevels: ["关键支撑位", "重要阻力位"]
+          id: 1,
+          name: "基本面支撑",
+          coreAssumption: `${input.assetName}的核心业务保持稳定增长`,
+          conviction: 6,
+          monitorIndicators: [
+            { name: "季度营收增速", type: "fundamental", frequency: "quarterly" },
+            { name: "毛利率变化", type: "fundamental", frequency: "quarterly" }
+          ],
+          bullishSignal: "营收和利润持续增长",
+          riskTrigger: "核心业务增速放缓"
+        },
+        {
+          id: 2,
+          name: "估值合理",
+          coreAssumption: "当前估值处于合理区间",
+          conviction: 5,
+          monitorIndicators: [
+            { name: "PE分位数", type: "fundamental", frequency: "daily" },
+            { name: "PB分位数", type: "fundamental", frequency: "daily" }
+          ],
+          bullishSignal: "估值处于历史低位",
+          riskTrigger: "估值回到历史高位"
         }
       ],
-      coreThesis: [
+      pricePhases: [
         {
-          title: "核心投资逻辑",
-          description: `${input.assetName}在所处行业中具有相对优势或独特价值，值得长期关注`,
-          conviction: 6
+          period: "当前",
+          description: "价格处于合理区间",
+          keyLevels: ["支撑位", "阻力位"]
         }
       ],
       fragilePoints: [
-        "宏观经济不确定性风险",
+        "宏观经济不确定性",
         "行业竞争加剧",
-        "政策监管变化",
-        "估值波动风险"
-      ],
-      monitorTargets: [
-        {
-          type: "price",
-          condition: "股价跌破关键技术支撑位",
-          action: "重新评估持仓风险"
-        },
-        {
-          type: "fundamental",
-          condition: "季度业绩大幅不及预期",
-          action: "调整盈利预测"
-        },
-        {
-          type: "event",
-          condition: "行业重大政策变化",
-          action: "评估对公司的影响"
-        }
+        "政策变化"
       ]
     }
   }

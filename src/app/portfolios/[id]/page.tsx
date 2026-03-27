@@ -199,10 +199,10 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
                             </div>
                           </div>
                           
-                          {position.note && (
+                          {position.investmentThesis && (
                             <div className="mt-3 text-sm text-muted-foreground">
-                              <div className="font-medium mb-1">备注:</div>
-                              <div>{position.note}</div>
+                              <div className="font-medium mb-1">投资理由:</div>
+                              <div>{position.investmentThesis}</div>
                             </div>
                           )}
                         </div>

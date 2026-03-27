@@ -236,11 +236,11 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
               </div>
             </div>
 
-            {position.note && (
+            {position.investmentThesis && (
               <div className="pt-4 border-t">
                 <div className="text-sm text-muted-foreground mb-1">备注</div>
                 <div className="bg-accent/50 rounded-lg p-3 text-sm">
-                  {position.note}
+                  {position.investmentThesis}
                 </div>
               </div>
             )}

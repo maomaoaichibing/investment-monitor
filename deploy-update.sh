@@ -84,7 +84,8 @@ if [ "$SYNC_DB" = "true" ]; then
         echo -e "${RED}✗ 本地数据库文件不存在: $LOCAL_DB${NC}"
     else
         # 检查本地数据库内容
-        LOCAL_COUNT=$(sqlite3 "$LOCAL_DB "SELECT COUNT(*) FROM Thesis;" 2>/dev/null || echo "0")
+        LOCAL_COUNT=$(sqlite3 "$LOCAL_DB" "SELECT COUNT(*) FROM Thesis;" 2>/dev/null || echo "0")
+        echo "  本地持仓数量: $(sqlite3 "$LOCAL_DB" "SELECT COUNT(*) FROM Position;" 2>/dev/null || echo "0")"
         echo "  本地Thesis数量: $LOCAL_COUNT"
         
         # 复制到服务器

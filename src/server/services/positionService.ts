@@ -22,7 +22,7 @@ export class PositionService {
         costPrice: data.costPrice,
         positionWeight: data.positionWeight,
         holdingStyle: data.holdingStyle,
-        note: data.note || '',
+        investmentThesis: data.investmentThesis || '',
       },
     })
   }
@@ -109,7 +109,7 @@ export class PositionService {
         costPrice: data.costPrice,
         positionWeight: data.positionWeight,
         holdingStyle: data.holdingStyle,
-        note: data.note,
+        investmentThesis: data.investmentThesis,
       },
     })
   }

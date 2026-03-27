@@ -24,12 +24,30 @@ export const CreatePositionSchema = z.object({
   costPrice: z.number().positive('Cost price must be positive'),
   positionWeight: z.number().min(0).max(100, 'Position weight must be between 0-100'),
   holdingStyle: z.enum(['short_term', 'swing', 'long_term']),
-  note: z.string().optional(),
+  investmentThesis: z.string().optional(),  // 投资理由
 })
 
 export type CreatePositionInput = z.infer<typeof CreatePositionSchema>
 
-// Thesis JSON Schemas
+// Thesis JSON Schemas - 议题树结构
+
+// 单个议题支柱
+export const ThesisPillarSchema = z.object({
+  id: z.number(),
+  name: z.string(),                    // 议题名称，如"欧洲储能需求"
+  coreAssumption: z.string(),          // 核心假设（可证伪的具体陈述）
+  conviction: z.number().min(1).max(10), // 信心度 1-10
+  monitorIndicators: z.array(z.object({
+    name: z.string(),                  // 指标名称
+    type: z.enum(['fundamental', 'industry', 'macro', 'technical', 'sentiment', 'price']),
+    frequency: z.enum(['realtime', 'daily', 'weekly', 'monthly', 'quarterly']),
+    dataSource: z.string().optional(), // 数据来源建议
+  })),
+  bullishSignal: z.string(),          // 看多信号条件
+  riskTrigger: z.string(),            // 风险触发条件
+})
+
+// 价格阶段
 export const PricePhaseSchema = z.object({
   period: z.string(),
   direction: z.enum(['up', 'down', 'neutral']),
@@ -43,13 +61,14 @@ export const MonitorTargetSchema = z.object({
   why: z.string(),
 })
 
+// 增强版Thesis输出 - 包含议题树
 export const ThesisOutputSchema = z.object({
-  lookbackWindow: z.string(),
-  summary: z.string(),
-  pricePhases: z.array(PricePhaseSchema),
-  coreThesis: z.array(z.string()),
-  fragilePoints: z.array(z.string()),
-  monitorTargets: z.array(MonitorTargetSchema),
+  thesisSummary: z.string(),          // 核心投资逻辑一句话总结
+  pillars: z.array(ThesisPillarSchema), // 议题树
+  pricePhases: z.array(PricePhaseSchema).optional(),
+  coreThesis: z.array(z.string()).optional(),    // 兼容旧格式
+  fragilePoints: z.array(z.string()).optional(),   // 兼容旧格式
+  monitorTargets: z.array(MonitorTargetSchema).optional(), // 兼容旧格式
 })
 
 export type ThesisOutput = z.infer<typeof ThesisOutputSchema>

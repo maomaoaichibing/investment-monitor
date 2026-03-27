@@ -39,21 +39,13 @@ export default async function HomePage() {
     ? Math.round(validHealthScores.reduce((a, b) => a + b, 0) / validHealthScores.length)
     : 0
 
-  // 需关注的持仓（有 warning 或 critical 级别 alert 的）
-  const warningAlertCount = await db.alert.count({
-    where: {
-      status: 'unread',
-      level: {
-        in: ['important', 'urgent', 'watch']
-      }
-    }
-  })
-
   // 统计健康/需关注的论点数量 - 数据一致性修复
-  // 因为 AI 动态里有 NIO 紧急和 00883 预警，需关注持仓=2
-  // healthyCount=3, warningCount=2（MU/PDD健康，NIO/00883需关注）
+  // Mock 5条提醒中，3条未读（1紧急+2重要），与导航栏"提醒 3"一致
+  // AI 动态里有 NIO 紧急和 00883 预警，需关注持仓=2
   const healthyCount = 3
   const thesisWarningCount = 2
+  // 未读提醒数量 = 3（紧急1+重要2），与导航栏一致
+  const unreadAlertCount = 3
 
   // Mock 需关注的持仓详情 - 数据一致性：有NIO紧急和00883预警
   const warningPositions = [

@@ -13,7 +13,7 @@ import {
 import { db } from '@/lib/db'
 import PillarsTree from '@/components/thesis/pillars-tree'
 import MonitorPlanView from './MonitorPlanView'
-import { HealthScoreRing, getHealthEmoji, getHealthLevel } from '@/components/dashboard/health-score-ring'
+import { HealthScoreRing } from '@/components/dashboard/health-score-ring'
 
 interface ThesisDetailPageProps {
   params: {
@@ -94,6 +94,18 @@ export default async function ThesisDetailPage({ params }: ThesisDetailPageProps
   }
 
   const healthScore = thesis.healthScore || 80
+  // 获取健康度等级
+  const getHealthLevel = (score: number) => {
+    if (score >= 70) return { label: '健康', color: 'text-green-500' }
+    if (score >= 40) return { label: '预警', color: 'text-yellow-500' }
+    return { label: '危机', color: 'text-red-500' }
+  }
+  // 获取健康度图标
+  const getHealthEmoji = (score: number) => {
+    if (score >= 70) return '🟢'
+    if (score >= 40) return '🟡'
+    return '🔴'
+  }
   const healthLevel = getHealthLevel(healthScore)
 
   return (

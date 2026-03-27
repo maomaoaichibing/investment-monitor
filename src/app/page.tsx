@@ -1,6 +1,6 @@
 import DashboardStats from '@/components/dashboard/dashboard-stats'
-import RecentAlerts from '@/components/dashboard/recent-alerts'
-import RecentTheses from '@/components/dashboard/recent-theses'
+import AIFeed from '@/components/dashboard/ai-feed'
+import ThesisCard from '@/components/dashboard/thesis-card'
 import PortfolioOverview from '@/components/dashboard/portfolio-overview'
 
 export default function HomePage() {
@@ -14,13 +14,17 @@ export default function HomePage() {
       </div>
 
       <div className="grid gap-6">
+        {/* 顶部统计卡片 */}
         <DashboardStats />
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <RecentAlerts />
-          <RecentTheses />
-          <PortfolioOverview />
+        {/* 主要内容区：AI动态 | 论题卡片 | 组合概览 */}
+        <div className="grid gap-6 lg:grid-cols-2">
+          <AIFeed />
+          <ThesisCard />
         </div>
+
+        {/* 组合概览 */}
+        <PortfolioOverview />
       </div>
     </div>
   )

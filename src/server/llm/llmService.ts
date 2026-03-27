@@ -3,6 +3,7 @@ import { buildThesisPrompt } from './prompts/thesisPrompt'
 import { generateMonitorPlanPrompt } from './prompts/monitorPlanPrompt'
 import { buildAlertImpactPrompt } from './prompts/alertImpactPrompt'
 import { buildDailySummaryPrompt } from './prompts/dailySummaryPrompt'
+import { buildDevilsAdvocatePrompt } from './prompts/devilsAdvocatePrompt'
 import { monitorPlanSchema } from '@/lib/schemas/monitorPlanSchema'
 
 // Kimi API 配置
@@ -730,6 +731,117 @@ export class LLMService {
       notableChanges: [],
       noChangeStocks: [],
       upcomingEvents: []
+    }
+  }
+
+  /**
+   * #6: 使用 Kimi LLM 生成反向论证（Devil's Advocate）
+   */
+  async generateDevilsAdvocate(params: {
+    stockCode: string
+    stockName: string
+    direction: string
+    thesisSummary: string
+    pillarsJson: string
+  }): Promise<any> {
+    const prompt = buildDevilsAdvocatePrompt(params)
+
+    try {
+      const response = await fetch(KIMI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${KIMI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: KIMI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `你是一位专业的投资"魔鬼代言人"。你的任务是找到反对用户投资论点的最强证据和逻辑，保持客观，不要为了反对而反对。`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Kimi API error:', response.status, errorText)
+        throw new Error(`Kimi API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+      const content = data.choices?.[0]?.message?.content || ''
+      console.log('Kimi DevilsAdvocate raw response:', content)
+
+      // 解析 JSON
+      let parsed
+      try {
+        parsed = JSON.parse(content)
+      } catch {
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+                         content.match(/(\{[\s\S]*\})/)
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[1])
+          } catch {
+            console.warn('Failed to parse JSON from content')
+            return this.generateFallbackDevilsAdvocate(params)
+          }
+        } else {
+          console.warn('No JSON found in response')
+          return this.generateFallbackDevilsAdvocate(params)
+        }
+      }
+
+      // 验证并填充
+      return this.validateAndFillDevilsAdvocate(parsed, params)
+
+    } catch (error) {
+      console.error('LLM DevilsAdvocate error:', error)
+      return this.generateFallbackDevilsAdvocate(params)
+    }
+  }
+
+  /**
+   * 验证并填充 DevilsAdvocate 数据
+   */
+  private validateAndFillDevilsAdvocate(data: any, params: any): any {
+    return {
+      overallCounterThesis: data?.overall_counter_thesis || '反对观点总结',
+      riskScore: Math.min(100, Math.max(0, parseInt(data?.risk_score) || 50)),
+      challenges: Array.isArray(data?.challenges) ? data.challenges : [],
+      blindSpots: Array.isArray(data?.blind_spots) ? data.blind_spots : [],
+      keyQuestion: data?.key_question || '核心问题待确定'
+    }
+  }
+
+  /**
+   * 生成默认的 DevilsAdvocate 结构（Fallback）
+   */
+  private generateFallbackDevilsAdvocate(params: any): any {
+    return {
+      overallCounterThesis: `需要进一步分析${params.stockName}的风险`,
+      riskScore: 50,
+      challenges: [
+        {
+          target_assumption: '核心假设待验证',
+          counter_argument: '该假设可能面临市场环境和竞争格局的挑战',
+          counter_evidence: '需要更多数据支持',
+          probability: '中',
+          worst_case_impact: '可能导致股价下跌20%以上'
+        }
+      ],
+      blindSpots: [
+        '可能存在被忽视的风险因素',
+        '宏观环境影响可能被低估'
+      ],
+      keyQuestion: `${params.stockName}的核心竞争力能否持续？`
     }
   }
 }

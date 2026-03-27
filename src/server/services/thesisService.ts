@@ -124,6 +124,7 @@ export class ThesisService {
       include: {
         position: {
           select: {
+            id: true,
             symbol: true,
             assetName: true,
             market: true
@@ -145,6 +146,7 @@ export class ThesisService {
       include: {
         position: {
           select: {
+            id: true,
             symbol: true,
             assetName: true
           }
@@ -164,8 +166,15 @@ export class ThesisService {
       include: {
         position: {
           select: {
+            id: true,
             symbol: true,
             assetName: true
+          }
+        },
+        portfolio: {
+          select: {
+            id: true,
+            name: true
           }
         }
       }

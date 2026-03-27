@@ -19,6 +19,7 @@ import {
   Briefcase
 } from 'lucide-react'
 import { db } from '@/lib/db'
+import { PositionPriceCard } from '@/components/stock/position-price-card'
 
 interface PositionDetailPageProps {
   params: {
@@ -192,6 +193,24 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* 实时行情卡片 */}
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <TrendingUp className="h-5 w-5" />
+          实时行情
+        </h2>
+        <PositionPriceCard
+          symbol={position.symbol}
+          name={position.assetName}
+          market={position.market}
+          quantity={position.quantity}
+          costPrice={position.costPrice}
+          showDetails={true}
+          autoRefresh={true}
+          refreshInterval={60}
+        />
       </div>
 
       {/* 详细信息 */}

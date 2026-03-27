@@ -123,55 +123,10 @@ export class MonitorPlanService {
       market: thesis.position.market,
     }
 
-    // 5. 生成模拟监控计划（暂时不使用真实LLM）
-    const monitorPlanData: MonitorPlan = {
-      watchItems: [
-        {
-          title: '季度数据中心营收',
-          metric: '数据中心营收环比增长',
-          threshold: '环比增长低于10%',
-          source: '公司财报',
-          frequency: 'quarterly',
-          priority: 'high'
-        },
-        {
-          title: '毛利率趋势',
-          metric: '毛利率变化',
-          threshold: '连续两个季度下降',
-          source: '财报分析',
-          frequency: 'quarterly',
-          priority: 'medium'
-        }
-      ],
-      triggerConditions: [
-        {
-          condition: '数据中心营收环比增长低于5%',
-          description: '核心增长引擎放缓',
-          action: '重新评估增长预期，考虑部分减仓',
-          priority: 'high',
-          requiresConfirmation: true,
-          confirmationMethod: 'ai'
-        }
-      ],
-      reviewFrequency: 'weekly',
-      disconfirmSignals: [
-        {
-          signal: '数据中心业务增速连续两个季度下滑',
-          description: '核心增长引擎失速',
-          severity: 'critical',
-          response: '重新评估核心投资逻辑'
-        }
-      ],
-      actionHints: [
-        {
-          scenario: '季度业绩低于预期',
-          suggestedAction: '将风险等级提升至高级，准备减仓计划',
-          rationale: '防止连续超预期失败',
-          priority: 'high'
-        }
-      ],
-      notes: '重点关注数据中心业务的持续增长能力'
-    }
+    // 5. 调用LLM生成真实的监控计划
+    console.log(`[MonitorPlan] Generating real monitor plan for ${thesis.position.assetName} (${thesis.position.symbol})...`)
+    const monitorPlanData = await llmService.generateMonitorPlan(promptData)
+    console.log(`[MonitorPlan] Generated monitor plan with ${monitorPlanData.watchItems?.length || 0} watch items`)
 
     // 6. 将监控计划保存到数据库
     const monitorPlanJson = JSON.stringify(monitorPlanData)

@@ -1,5 +1,7 @@
 import { ThesisInput } from '@/server/services/thesisService'
 import { buildThesisPrompt } from './prompts/thesisPrompt'
+import { generateMonitorPlanPrompt } from './prompts/monitorPlanPrompt'
+import { monitorPlanSchema } from '@/lib/schemas/monitorPlanSchema'
 
 // Kimi API 配置
 const KIMI_API_KEY = process.env.KIMI_API_KEY || 'sk-5lKs7u9Q5FTWUpRd8SHneXmNt9ER51puxbyv7rY5I5YjY3oX'
@@ -162,6 +164,289 @@ export class LLMService {
       fragilePoints: Array.isArray(data?.fragilePoints) && data.fragilePoints.length > 0
         ? data.fragilePoints.slice(0, 5)
         : defaultThesis.fragilePoints,
+    }
+  }
+
+  /**
+   * 使用 Kimi LLM 生成监控计划
+   */
+  async generateMonitorPlan(thesisData: {
+    summary: string
+    pricePhases: any[]
+    coreThesis: any[]
+    fragilePoints: string[]
+    monitorTargets: any[]
+    symbol: string
+    assetName: string
+    market: string
+  }): Promise<any> {
+    // 构建提示词
+    const prompt = generateMonitorPlanPrompt(thesisData)
+
+    try {
+      // 调用 Kimi API
+      const response = await fetch(KIMI_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${KIMI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: KIMI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `你是一位专业的投资监控分析师。你的任务是基于投资论题生成一个具体、可执行的监控计划。
+
+【输出格式 - 必须严格按此JSON格式】
+{
+  "watchItems": [
+    {
+      "title": "监控项标题",
+      "metric": "具体指标名称",
+      "threshold": "触发阈值条件",
+      "source": "数据来源",
+      "frequency": "realtime|daily|weekly|monthly|quarterly",
+      "priority": "high|medium|low"
+    }
+  ],
+  "triggerConditions": [
+    {
+      "condition": "触发条件描述",
+      "description": "条件说明",
+      "action": "建议行动",
+      "priority": "high|medium|low",
+      "requiresConfirmation": true|false,
+      "confirmationMethod": "ai|manual"
+    }
+  ],
+  "reviewFrequency": "daily|weekly|biweekly|monthly",
+  "disconfirmSignals": [
+    {
+      "signal": "否定信号描述",
+      "description": "信号说明",
+      "severity": "critical|high|medium|low",
+      "response": "应对措施"
+    }
+  ],
+  "actionHints": [
+    {
+      "scenario": "场景描述",
+      "suggestedAction": "建议行动",
+      "rationale": "行动理由",
+      "priority": "high|medium|low"
+    }
+  ],
+  "notes": "总体备注说明"
+}
+
+【重要规则】
+1. watchItems至少返回3个监控项，每个都要有具体的指标和阈值
+2. triggerConditions至少返回2个触发条件
+3. disconfirmSignals至少返回2个否定投资逻辑的信号
+4. actionHints至少返回2个场景应对建议
+5. reviewFrequency根据股票特性选择合适的频率
+6. 只返回JSON，不要包含任何解释或其他内容`
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          temperature: 0.7
+        })
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Kimi API error:', response.status, errorText)
+        throw new Error(`Kimi API error: ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      // 解析 Kimi 的响应
+      const content = data.choices?.[0]?.message?.content || ''
+      console.log('Kimi Monitor Plan raw response:', content)
+
+      // 尝试解析JSON
+      let parsed
+      try {
+        // 尝试直接解析
+        parsed = JSON.parse(content)
+      } catch {
+        // 如果失败，尝试提取JSON块
+        const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)```/) ||
+                         content.match(/(\{[\s\S]*\})/)
+        if (jsonMatch) {
+          try {
+            parsed = JSON.parse(jsonMatch[1])
+          } catch {
+            console.warn('Failed to parse JSON from content')
+            return this.generateFallbackMonitorPlan(thesisData)
+          }
+        } else {
+          console.warn('No JSON found in response')
+          return this.generateFallbackMonitorPlan(thesisData)
+        }
+      }
+
+      // 验证并补充必要字段
+      return this.validateAndFillMonitorPlan(parsed, thesisData)
+
+    } catch (error) {
+      console.error('LLM MonitorPlan Service error:', error)
+      // API调用失败时使用fallback
+      return this.generateFallbackMonitorPlan(thesisData)
+    }
+  }
+
+  /**
+   * 验证并填充MonitorPlan数据
+   */
+  private validateAndFillMonitorPlan(data: any, thesisData: any): any {
+    const defaultPlan = this.generateFallbackMonitorPlan(thesisData)
+
+    // 处理watchItems
+    const watchItems = Array.isArray(data?.watchItems) && data.watchItems.length > 0
+      ? data.watchItems.slice(0, 6).map((item: any, idx: number) => ({
+          title: item.title || `监控项${idx + 1}`,
+          metric: item.metric || '',
+          threshold: item.threshold || '',
+          source: item.source || '',
+          frequency: ['realtime', 'daily', 'weekly', 'monthly', 'quarterly'].includes(item.frequency)
+            ? item.frequency : 'weekly',
+          priority: ['high', 'medium', 'low'].includes(item.priority)
+            ? item.priority : 'medium'
+        }))
+      : defaultPlan.watchItems
+
+    // 处理triggerConditions
+    const triggerConditions = Array.isArray(data?.triggerConditions) && data.triggerConditions.length > 0
+      ? data.triggerConditions.slice(0, 4).map((cond: any) => ({
+          condition: cond.condition || '',
+          description: cond.description || '',
+          action: cond.action || '',
+          priority: ['high', 'medium', 'low'].includes(cond.priority)
+            ? cond.priority : 'medium',
+          requiresConfirmation: Boolean(cond.requiresConfirmation),
+          confirmationMethod: ['ai', 'manual'].includes(cond.confirmationMethod)
+            ? cond.confirmationMethod : 'manual'
+        }))
+      : defaultPlan.triggerConditions
+
+    // 处理disconfirmSignals
+    const disconfirmSignals = Array.isArray(data?.disconfirmSignals) && data.disconfirmSignals.length > 0
+      ? data.disconfirmSignals.slice(0, 4).map((sig: any) => ({
+          signal: sig.signal || '',
+          description: sig.description || '',
+          severity: ['critical', 'high', 'medium', 'low'].includes(sig.severity)
+            ? sig.severity : 'medium',
+          response: sig.response || ''
+        }))
+      : defaultPlan.disconfirmSignals
+
+    // 处理actionHints
+    const actionHints = Array.isArray(data?.actionHints) && data.actionHints.length > 0
+      ? data.actionHints.slice(0, 4).map((hint: any) => ({
+          scenario: hint.scenario || '',
+          suggestedAction: hint.suggestedAction || '',
+          rationale: hint.rationale || '',
+          priority: ['high', 'medium', 'low'].includes(hint.priority)
+            ? hint.priority : 'medium'
+        }))
+      : defaultPlan.actionHints
+
+    return {
+      watchItems,
+      triggerConditions,
+      reviewFrequency: ['daily', 'weekly', 'biweekly', 'monthly'].includes(data?.reviewFrequency)
+        ? data.reviewFrequency : 'weekly',
+      disconfirmSignals,
+      actionHints,
+      notes: data?.notes || defaultPlan.notes
+    }
+  }
+
+  /**
+   * 生成默认的MonitorPlan结构（Fallback）
+   */
+  private generateFallbackMonitorPlan(thesisData: any): any {
+    return {
+      watchItems: [
+        {
+          title: '股价走势监控',
+          metric: '股价',
+          threshold: '跌破关键支撑位',
+          source: '交易所行情',
+          frequency: 'daily',
+          priority: 'high'
+        },
+        {
+          title: '季度财报',
+          metric: '营收和利润增速',
+          threshold: '同比下降超过10%',
+          source: '公司财报',
+          frequency: 'quarterly',
+          priority: 'high'
+        },
+        {
+          title: '行业动态',
+          metric: '竞争对手动向',
+          threshold: '重大技术突破或价格战',
+          source: '行业新闻',
+          frequency: 'weekly',
+          priority: 'medium'
+        }
+      ],
+      triggerConditions: [
+        {
+          condition: '股价跌破关键支撑位',
+          description: '技术面破位',
+          action: '减仓或止损',
+          priority: 'high',
+          requiresConfirmation: true,
+          confirmationMethod: 'manual'
+        },
+        {
+          condition: '季度财报大幅低于预期',
+          description: '基本面恶化',
+          action: '重新评估投资逻辑',
+          priority: 'high',
+          requiresConfirmation: true,
+          confirmationMethod: 'ai'
+        }
+      ],
+      reviewFrequency: 'weekly',
+      disconfirmSignals: [
+        {
+          signal: '核心业务竞争力下降',
+          description: '市场份额持续下滑',
+          severity: 'critical',
+          response: '减仓并重新评估'
+        },
+        {
+          signal: '行业政策重大不利变化',
+          description: '监管环境恶化',
+          severity: 'high',
+          response: '密切关注，必要时减仓'
+        }
+      ],
+      actionHints: [
+        {
+          scenario: '股价在支撑位获得支撑',
+          suggestedAction: '持有或加仓',
+          rationale: '技术面确认支撑有效',
+          priority: 'medium'
+        },
+        {
+          scenario: '出现重大利好催化剂',
+          suggestedAction: '加仓',
+          rationale: '催化剂驱动股价上涨',
+          priority: 'high'
+        }
+      ],
+      notes: `针对${thesisData.assetName}的监控计划，重点关注基本面和技术面变化`
     }
   }
 

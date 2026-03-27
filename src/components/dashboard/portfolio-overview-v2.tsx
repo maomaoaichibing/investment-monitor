@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Briefcase as PortfolioIcon, Plus, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { LineChart, Line, ResponsiveContainer } from 'recharts'
 
 // Mock 组合数据
 // TODO: Replace with API call: GET /api/portfolios
@@ -19,7 +20,16 @@ const mockPortfolios = [
     performance: '+15.2%',
     performanceLabel: '持有以来',
     // 7天迷你走势数据
-    sparklineData: [100, 102, 101, 105, 108, 112, 115]
+    sparklineData: [
+      { value: 100 },
+      { value: 102 },
+      { value: 98 },
+      { value: 105 },
+      { value: 108 },
+      { value: 106 },
+      { value: 115 }
+    ],
+    isUp: true
   },
   {
     id: 2,
@@ -29,7 +39,16 @@ const mockPortfolios = [
     alertCount: 0,
     performance: '+8.7%',
     performanceLabel: '持有以来',
-    sparklineData: [100, 101, 103, 102, 104, 106, 109]
+    sparklineData: [
+      { value: 100 },
+      { value: 101 },
+      { value: 102 },
+      { value: 101 },
+      { value: 103 },
+      { value: 105 },
+      { value: 109 }
+    ],
+    isUp: true
   },
   {
     id: 3,
@@ -39,61 +58,18 @@ const mockPortfolios = [
     alertCount: 1,
     performance: '+5.3%',
     performanceLabel: '持有以来',
-    sparklineData: [100, 98, 97, 99, 101, 103, 105]
+    sparklineData: [
+      { value: 100 },
+      { value: 97 },
+      { value: 95 },
+      { value: 98 },
+      { value: 102 },
+      { value: 104 },
+      { value: 105 }
+    ],
+    isUp: true
   }
 ]
-
-// 简单的 Sparkline 组件
-function Sparkline({ data, width = 120, height = 40, color = '#22c55e' }: {
-  data: number[]
-  width?: number
-  height?: number
-  color?: string
-}) {
-  const min = Math.min(...data)
-  const max = Math.max(...data)
-  const range = max - min || 1
-
-  const points = data.map((value, index) => {
-    const x = (index / (data.length - 1)) * width
-    const y = height - ((value - min) / range) * height
-    return `${x},${y}`
-  }).join(' ')
-
-  const isUp = data[data.length - 1] >= data[0]
-  const lineColor = isUp ? '#22c55e' : '#ef4444' // green for up, red for down
-
-  return (
-    <svg width={width} height={height} className="overflow-visible">
-      {/* 背景网格线 */}
-      <line
-        x1={0}
-        y1={height / 2}
-        x2={width}
-        y2={height / 2}
-        stroke="currentColor"
-        strokeWidth="0.5"
-        className="text-muted-foreground/20"
-      />
-      {/* 走势线 */}
-      <polyline
-        fill="none"
-        stroke={lineColor}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        points={points}
-      />
-      {/* 最后一个点 */}
-      <circle
-        cx={(data.length - 1) / (data.length - 1) * width}
-        cy={height - ((data[data.length - 1] - min) / range) * height}
-        r="3"
-        fill={lineColor}
-      />
-    </svg>
-  )
-}
 
 export default function PortfolioOverviewV2() {
   const [mounted, setMounted] = useState(false)
@@ -161,14 +137,20 @@ export default function PortfolioOverviewV2() {
                 </div>
               </div>
 
-              {/* Sparkline 迷你折线图 */}
-              <div className="ml-4 shrink-0">
+              {/* recharts Sparkline 迷你折线图 */}
+              <div className="ml-4 shrink-0 w-[100px] h-[32px]">
                 {mounted && (
-                  <Sparkline
-                    data={portfolio.sparklineData}
-                    width={100}
-                    height={36}
-                  />
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={portfolio.sparklineData}>
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke={portfolio.isUp ? '#ef4444' : '#22c55e'}
+                        strokeWidth={1.5}
+                        dot={false}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
                 )}
               </div>
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { TrendingUp, TrendingDown, AlertTriangle, Shield, Brain, Activity } from 'lucide-react'
+import { TrendingUp, TrendingDown, AlertTriangle, Shield, Brain } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 // Mock 今日盈亏数据
@@ -69,58 +69,54 @@ export default function DecisionStats({
     return `${prefix}¥${absAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
-  // 健康度颜色
-  const getHealthColor = (score: number) => {
-    if (score >= 70) return 'text-green-500'
-    if (score >= 40) return 'text-yellow-500'
-    return 'text-red-500'
-  }
+  // 健康度环形进度条 - 使用用户提供的SVG实现
+  const HealthRing = ({ score }: { score: number }) => {
+    const getColor = (s: number) => {
+      if (s >= 70) return 'text-green-500'
+      if (s >= 40) return 'text-yellow-500'
+      return 'text-red-500'
+    }
 
-  const getHealthBgColor = (score: number) => {
-    if (score >= 70) return 'bg-green-500'
-    if (score >= 40) return 'bg-yellow-500'
-    return 'bg-red-500'
-  }
-
-  // 健康度环形进度条
-  const HealthRing = ({ score, size = 48 }: { score: number; size?: number }) => {
-    const strokeWidth = 4
-    const radius = (size - strokeWidth) / 2
-    const circumference = radius * 2 * Math.PI
-    const offset = circumference - (score / 100) * circumference
+    const color = getColor(score)
 
     if (!mounted) {
-      return <div className="w-12 h-12 rounded-full border-4 border-muted animate-pulse" />
+      return (
+        <div className="relative w-12 h-12">
+          <div className="w-12 h-12 rounded-full border-4 border-muted animate-pulse" />
+        </div>
+      )
     }
 
     return (
-      <div className="relative" style={{ width: size, height: size }}>
-        <svg width={size} height={size} className="transform -rotate-90">
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
+      <div className="relative w-12 h-12">
+        <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
+          {/* 灰色底圈 */}
+          <path
+            className="text-muted stroke-current"
             fill="none"
-            stroke="currentColor"
-            strokeWidth={strokeWidth}
-            className="text-muted"
+            strokeWidth="3"
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
           />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
+          {/* 进度弧 */}
+          <path
+            className={`${color} stroke-current`}
             fill="none"
-            stroke={score >= 70 ? '#22c55e' : score >= 40 ? '#eab308' : '#ef4444'}
-            strokeWidth={strokeWidth}
+            strokeWidth="3"
+            strokeDasharray={`${score}, 100`}
             strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={offset}
-            className="transition-all duration-1000 ease-out"
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
           />
         </svg>
+        {/* 中间数字 */}
+        <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${color}`}>
+          {score}
+        </span>
       </div>
     )
   }
+
+  // 数据一致性修复：需关注持仓显示2（因为AI动态有NIO紧急和00883预警）
+  const hasWarnings = warningCount > 0
 
   const stats = [
     // 卡片1：今日盈亏
@@ -135,28 +131,28 @@ export default function DecisionStats({
       valueColor: mockProfitData.amount >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400',
       isProfit: true
     },
-    // 卡片2：需关注持仓
+    // 卡片2：需关注持仓 - 数据一致性修复
     {
       title: '需关注持仓',
-      value: warningCount.toString(),
-      subValue: warningCount > 0 ? '点击查看详情' : '全部健康',
-      subText: warningCount > 0 ? `${warningPositions.length} 个持仓需关注` : '无异常信号',
+      value: hasWarnings ? warningCount.toString() : '0',
+      subValue: hasWarnings ? '需要关注' : '全部健康',
+      subText: hasWarnings ? `${warningPositions.length}个持仓有异常信号` : '无异常信号',
       icon: AlertTriangle,
-      iconColor: warningCount > 0 ? 'text-orange-500' : 'text-green-500',
-      bgColor: warningCount > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-green-50 dark:bg-green-950/20',
-      valueColor: warningCount > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400',
-      isWarning: warningCount > 0
+      iconColor: hasWarnings ? 'text-orange-500' : 'text-green-500',
+      bgColor: hasWarnings ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-green-50 dark:bg-green-950/20',
+      valueColor: hasWarnings ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400',
+      isWarning: hasWarnings
     },
-    // 卡片3：论点健康度
+    // 卡片3：论点健康度 - 数据一致性修复
     {
       title: '论点健康度',
       value: avgHealthScore.toString(),
       subValue: `${healthyCount}个健康 / ${warningCount}个需关注`,
       subText: '平均分数',
       icon: Shield,
-      iconColor: getHealthColor(avgHealthScore),
+      iconColor: avgHealthScore >= 70 ? 'text-green-500' : avgHealthScore >= 40 ? 'text-yellow-500' : 'text-red-500',
       bgColor: 'bg-slate-50 dark:bg-slate-950/20',
-      valueColor: getHealthColor(avgHealthScore),
+      valueColor: avgHealthScore >= 70 ? 'text-green-600' : avgHealthScore >= 40 ? 'text-yellow-600' : 'text-red-600',
       isHealthScore: true,
       healthScore: avgHealthScore,
       healthRing: <HealthRing score={avgHealthScore} />
@@ -177,7 +173,7 @@ export default function DecisionStats({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat, index) => (
+      {stats.map((stat) => (
         <Card key={stat.title} className={stat.bgColor}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">

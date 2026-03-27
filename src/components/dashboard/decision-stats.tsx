@@ -43,12 +43,6 @@ export default function DecisionStats({
   warningCount,
   warningPositions
 }: DashboardStatsProps) {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   // 格式化相对时间
   const formatRelativeTime = (timestamp: string) => {
     const now = new Date()
@@ -69,46 +63,48 @@ export default function DecisionStats({
     return `${prefix}¥${absAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
-  // 健康度环形进度条 - 使用用户提供的SVG实现
+  // 健康度环形进度条 - 纯SVG实现，不依赖第三方库
   const HealthRing = ({ score }: { score: number }) => {
-    const getColor = (s: number) => {
+    // 颜色规则：分数 > 70 绿色，40-70 黄色，< 40 红色
+    const getArcColor = (s: number) => {
       if (s >= 70) return 'text-green-500'
       if (s >= 40) return 'text-yellow-500'
       return 'text-red-500'
     }
 
-    const color = getColor(score)
-
-    if (!mounted) {
-      return (
-        <div className="relative w-12 h-12">
-          <div className="w-12 h-12 rounded-full border-4 border-muted animate-pulse" />
-        </div>
-      )
+    const getTextColor = (s: number) => {
+      if (s >= 70) return 'text-green-600'
+      if (s >= 40) return 'text-yellow-600'
+      return 'text-red-600'
     }
+
+    const arcColor = getArcColor(score)
+    const textColor = getTextColor(score)
 
     return (
       <div className="relative w-12 h-12">
         <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
           {/* 灰色底圈 */}
           <path
-            className="text-muted stroke-current"
-            fill="none"
-            strokeWidth="3"
             d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-          />
-          {/* 进度弧 */}
-          <path
-            className={`${color} stroke-current`}
             fill="none"
+            stroke="currentColor"
+            strokeWidth="3"
+            className="text-muted"
+          />
+          {/* 进度弧 - 使用 strokeDasharray 实现环形进度 */}
+          <path
+            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none"
+            stroke="currentColor"
             strokeWidth="3"
             strokeDasharray={`${score}, 100`}
             strokeLinecap="round"
-            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            className={arcColor}
           />
         </svg>
         {/* 中间数字 */}
-        <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${color}`}>
+        <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${textColor}`}>
           {score}
         </span>
       </div>
@@ -143,7 +139,7 @@ export default function DecisionStats({
       valueColor: hasWarnings ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400',
       isWarning: hasWarnings
     },
-    // 卡片3：论点健康度 - 数据一致性修复
+    // 卡片3：论点健康度
     {
       title: '论点健康度',
       value: avgHealthScore.toString(),

@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Briefcase as PortfolioIcon, Plus, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
 import { LineChart, Line, ResponsiveContainer } from 'recharts'
 
 // Mock 组合数据
@@ -72,12 +71,6 @@ const mockPortfolios = [
 ]
 
 export default function PortfolioOverviewV2() {
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
   const portfolios = mockPortfolios
 
   return (
@@ -139,19 +132,17 @@ export default function PortfolioOverviewV2() {
 
               {/* recharts Sparkline 迷你折线图 */}
               <div className="ml-4 shrink-0 w-[100px] h-[32px]">
-                {mounted && (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={portfolio.sparklineData}>
-                      <Line
-                        type="monotone"
-                        dataKey="value"
-                        stroke={portfolio.isUp ? '#ef4444' : '#22c55e'}
-                        strokeWidth={1.5}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                )}
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={portfolio.sparklineData}>
+                    <Line
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#ef4444"
+                      strokeWidth={1.5}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
               </div>
 
               {/* 查看按钮 */}

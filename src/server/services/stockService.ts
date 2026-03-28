@@ -1,36 +1,51 @@
 /**
- * 股票行情服务 - 腾讯财经/新浪财经
+ * 股票行情服务 - 多数据源整合
  * 支持A股、港股、美股实时行情
+ * 数据源: 腾讯财经 → 新浪财经 → Yahoo Finance (容灾)
  */
 
-export interface StockQuote {
-  symbol: string      // 股票代码
-  name: string        // 股票名称
-  price: number        // 当前价格
-  change: number       // 涨跌额
-  changePercent: number // 涨跌幅(%)
-  open: number         // 开盘价
-  prevClose: number    // 昨收价
-  high: number         // 最高价
-  low: number          // 最低价
-  volume: number       // 成交量
-  amount: number       // 成交额
-  market: string       // 市场 (SH/SZ/HK/US)
-  updateTime: string   // 更新时间
+import { getCache, setCache, makeCacheKey } from './stockCache'
+
+// ============== 类型定义 ==============
+
+export interface EnhancedStockQuote {
+  // 基础字段
+  symbol: string
+  name: string
+  price: number
+  change: number
+  changePercent: number
+  open: number
+  prevClose: number
+  high: number
+  low: number
+  volume: number
+  amount: number
+  market: string
+  updateTime: string
+
+  // 增强字段
+  week52High?: number
+  week52Low?: number
+  marketCap?: number
+  pe?: number
+  dividend?: number
+  amplitude?: number
+  preMarketPrice?: number
+  afterHoursPrice?: number
+  status?: 'trading' | 'closed' | 'pre' | 'after'
+  source?: string
 }
 
 export interface StockServiceResult {
   success: boolean
-  data?: StockQuote
+  data?: EnhancedStockQuote
   error?: string
+  source?: string
 }
 
-/**
- * 转换股票代码为腾讯格式
- * A股: sz000001 -> sz000001
- * 港股: 00700 -> hk00700
- * 美股: AAPL -> usAAPL
- */
+// ============== 工具函数 ==============
+
 function toTencentCode(symbol: string, market: string): string {
   const m = market.toUpperCase()
   if (m === 'HK') {
@@ -38,15 +53,34 @@ function toTencentCode(symbol: string, market: string): string {
   } else if (m === 'US') {
     return `us${symbol.toUpperCase()}`
   } else {
-    // A股
     return `${symbol.startsWith('6') ? 'sh' : 'sz'}${symbol}`
   }
 }
 
-/**
- * 从腾讯财经获取实时行情
- * 腾讯格式: v_sz000001="51~平安银行~000001~10.98~10.94~10.91~..."
- */
+function toSinaCode(symbol: string, market: string): string {
+  const m = market.toUpperCase()
+  if (m === 'HK') {
+    return `hk${symbol.padStart(5, '0')}`
+  } else if (m === 'US') {
+    return `us${symbol.toUpperCase()}`
+  } else {
+    return `${symbol.startsWith('6') ? 'sh' : 'sz'}${symbol}`
+  }
+}
+
+function toYahooSymbol(symbol: string, market: string): string {
+  const m = market.toUpperCase()
+  if (m === 'HK') {
+    return `${symbol}.HK`
+  } else if (m === 'US') {
+    return symbol.toUpperCase()
+  } else {
+    return `${symbol}.SS` // Shanghai
+  }
+}
+
+// ============== 腾讯财经 ==============
+
 async function fetchFromTencent(symbol: string, market: string): Promise<StockServiceResult> {
   try {
     const code = toTencentCode(symbol, market)
@@ -64,7 +98,6 @@ async function fetchFromTencent(symbol: string, market: string): Promise<StockSe
     }
 
     const text = await response.text()
-    // 格式: v_sz000001="51~平安银行~000001~10.98~..."
     const match = text.match(/="([^"]+)"/)
     if (!match) {
       return { success: false, error: '解析失败: 无法匹配数据' }
@@ -78,21 +111,50 @@ async function fetchFromTencent(symbol: string, market: string): Promise<StockSe
     const price = parseFloat(fields[3]) || 0
     const prevClose = parseFloat(fields[4]) || 0
     const open = parseFloat(fields[5]) || 0
-    const volume = parseInt(fields[6]) || 0  // 成交量(手)
-    const amount = parseFloat(fields[37]) || 0 // 成交额(万)
+    const volume = parseInt(fields[6]) || 0
+    const amount = parseFloat(fields[37]) || 0
     const high = parseFloat(fields[33]) || 0
     const low = parseFloat(fields[34]) || 0
     const change = price - prevClose
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0
+    const amplitude = prevClose > 0 ? ((high - low) / prevClose) * 100 : 0
 
-    // 去掉后缀，只保留纯symbol（如 AAPL.OQ -> AAPL）
+    // 港股特有字段解析
+    let week52High: number | undefined
+    let week52Low: number | undefined
+    let marketCap: number | undefined
+    let pe: number | undefined
+    let dividend: number | undefined
+
+    if (market.toUpperCase() === 'HK' && fields.length > 50) {
+      // 字段50-55包含52周数据
+      week52High = parseFloat(fields[47]) || undefined
+      week52Low = parseFloat(fields[48]) || undefined
+      // 市值在字段39-40
+      marketCap = parseFloat(fields[39]) ? parseFloat(fields[39]) * 100000000 : undefined
+      // 市盈率字段
+      pe = parseFloat(fields[39]) || undefined
+      // 股息率字段
+      dividend = parseFloat(fields[57]) || undefined
+    }
+
+    // 美股特有字段解析
+    if (market.toUpperCase() === 'US' && fields.length > 50) {
+      week52High = parseFloat(fields[33]) || undefined
+      week52Low = parseFloat(fields[34]) || undefined
+      pe = parseFloat(fields[52]) || undefined
+      marketCap = parseFloat(fields[44]) ? parseFloat(fields[44]) * 1000000000 : undefined
+    }
+
     const cleanSymbol = (fields[2] || symbol).replace(/\.[A-Z]+$/, '')
+    const name = fields[1] || ''
 
     return {
       success: true,
+      source: 'tencent',
       data: {
         symbol: cleanSymbol,
-        name: fields[1] || '',
+        name,
         price,
         change: parseFloat(change.toFixed(2)),
         changePercent: parseFloat(changePercent.toFixed(2)),
@@ -101,37 +163,35 @@ async function fetchFromTencent(symbol: string, market: string): Promise<StockSe
         high,
         low,
         volume,
-        amount: amount * 10000, // 万转元
+        amount: amount * 10000,
         market,
-        updateTime: new Date().toISOString()
+        updateTime: new Date().toISOString(),
+        week52High,
+        week52Low,
+        marketCap,
+        pe,
+        dividend,
+        amplitude: parseFloat(amplitude.toFixed(2)),
+        status: 'trading',
+        source: 'tencent'
       }
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '获取失败'
+      error: error instanceof Error ? error.message : '获取失败',
+      source: 'tencent'
     }
   }
 }
 
-/**
- * 从新浪财经获取实时行情
- * 新浪格式: var hq_str_sz000001="平安银行,10.910,10.940,10.980,..."
- */
+// ============== 新浪财经 ==============
+
 async function fetchFromSina(symbol: string, market: string): Promise<StockServiceResult> {
   try {
-    let code: string
-    const m = market.toUpperCase()
-
-    if (m === 'HK') {
-      code = `hk${symbol.padStart(5, '0')}`
-    } else if (m === 'US') {
-      code = `us${symbol.toUpperCase()}`
-    } else {
-      code = `${symbol.startsWith('6') ? 'sh' : 'sz'}${symbol}`
-    }
-
+    const code = toSinaCode(symbol, market)
     const url = `https://hq.sinajs.cn/list=${code}`
+
     const response = await fetch(url, {
       headers: {
         'Referer': 'https://finance.sina.com.cn',
@@ -144,7 +204,6 @@ async function fetchFromSina(symbol: string, market: string): Promise<StockServi
     }
 
     const text = await response.text()
-    // 格式: var hq_str_sz000001="平安银行,10.910,10.940,..."
     const match = text.match(/"([^"]+)"/)
     if (!match) {
       return { success: false, error: '解析失败: 无法匹配数据' }
@@ -161,18 +220,19 @@ async function fetchFromSina(symbol: string, market: string): Promise<StockServi
     const price = parseFloat(fields[3]) || 0
     const high = parseFloat(fields[4]) || 0
     const low = parseFloat(fields[5]) || 0
-    const volume = parseInt(fields[8]) || 0  // 成交量(股)
-    const amount = parseFloat(fields[9]) || 0 // 成交额
+    const volume = parseInt(fields[8]) || 0
+    const amount = parseFloat(fields[9]) || 0
     const updateTime = fields[30] || fields[31] || ''
 
     const change = price - prevClose
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0
+    const amplitude = prevClose > 0 ? ((high - low) / prevClose) * 100 : 0
 
-    // 去掉后缀，只保留纯symbol
     const cleanSymbol = symbol.replace(/\.[A-Z]+$/, '')
 
     return {
       success: true,
+      source: 'sina',
       data: {
         symbol: cleanSymbol,
         name,
@@ -186,38 +246,166 @@ async function fetchFromSina(symbol: string, market: string): Promise<StockServi
         volume,
         amount,
         market,
-        updateTime: updateTime ? `2026-${updateTime.replace(/-/g, '/')}` : new Date().toISOString()
+        amplitude: parseFloat(amplitude.toFixed(2)),
+        updateTime: updateTime ? `2026-${updateTime.replace(/-/g, '/')}` : new Date().toISOString(),
+        status: 'trading',
+        source: 'sina'
       }
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : '获取失败'
+      error: error instanceof Error ? error.message : '获取失败',
+      source: 'sina'
     }
   }
 }
 
+// ============== Yahoo Finance ==============
+
+async function fetchFromYahoo(symbol: string, market: string): Promise<StockServiceResult> {
+  try {
+    const yahooSymbol = toYahooSymbol(symbol, market)
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${yahooSymbol}?interval=1d&range=1d`
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0'
+      }
+    })
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`)
+    }
+
+    const json = await response.json()
+    const result = json?.chart?.result?.[0]
+
+    if (!result) {
+      return { success: false, error: '无数据' }
+    }
+
+    const meta = result.meta
+    const quote = result.timestamp && result.indicators?.quote?.[0]
+
+    if (!meta || !quote) {
+      return { success: false, error: '数据格式错误' }
+    }
+
+    const price = meta.regularMarketPrice || 0
+    const prevClose = meta.previousClose || meta.chartPreviousClose || 0
+    const open = meta.regularMarketOpen || 0
+    const high = meta.regularMarketDayHigh || 0
+    const low = meta.regularMarketDayLow || 0
+    const volume = meta.regularMarketVolume || 0
+    const amount = meta.regularMarketDayVolume || 0
+
+    const change = price - prevClose
+    const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0
+    const amplitude = prevClose > 0 ? ((high - low) / prevClose) * 100 : 0
+
+    // 提取52周数据
+    const week52High = meta.fiftyTwoWeekHigh || undefined
+    const week52Low = meta.fiftyTwoWeekLow || undefined
+    const marketCap = meta.marketCap || undefined
+    const pe = meta.trailingPE || undefined
+    const dividend = meta.dividendYield ? meta.dividendYield * 100 : undefined
+
+    // 盘前盘后
+    const preMarketPrice = meta.preMarketPrice || undefined
+    const afterHoursPrice = meta.postMarketPrice || undefined
+
+    // 判断状态
+    let status: 'trading' | 'closed' | 'pre' | 'after' = 'closed'
+    if (preMarketPrice) status = 'pre'
+    else if (afterHoursPrice) status = 'after'
+    else if (price > 0 && open > 0) status = 'trading'
+
+    return {
+      success: true,
+      source: 'yahoo',
+      data: {
+        symbol: symbol,
+        name: meta.shortName || meta.symbol || symbol,
+        price,
+        change: parseFloat(change.toFixed(2)),
+        changePercent: parseFloat(changePercent.toFixed(2)),
+        open,
+        prevClose,
+        high,
+        low,
+        volume,
+        amount,
+        market,
+        updateTime: new Date().toISOString(),
+        week52High,
+        week52Low,
+        marketCap,
+        pe,
+        dividend,
+        amplitude: parseFloat(amplitude.toFixed(2)),
+        preMarketPrice,
+        afterHoursPrice,
+        status,
+        source: 'yahoo'
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '获取失败',
+      source: 'yahoo'
+    }
+  }
+}
+
+// ============== 主函数 ==============
+
 /**
- * 获取单个股票实时行情
- * 优先使用腾讯财经，失败则尝试新浪
+ * 获取单个股票实时行情（多数据源容灾）
+ * 优先级: 腾讯 → 新浪 → Yahoo
  */
-export async function getStockQuote(symbol: string, market: string = 'A'): Promise<StockServiceResult> {
-  // 先尝试腾讯
+export async function getStockQuote(
+  symbol: string,
+  market: string = 'A',
+  useCache: boolean = true
+): Promise<StockServiceResult> {
+  const cacheKey = makeCacheKey(symbol, market)
+
+  // 检查缓存
+  if (useCache) {
+    const cached = getCache<EnhancedStockQuote>(cacheKey)
+    if (cached) {
+      return { success: true, data: cached, source: 'cache' }
+    }
+  }
+
+  // 腾讯财经
   const tencentResult = await fetchFromTencent(symbol, market)
-  if (tencentResult.success) {
+  if (tencentResult.success && tencentResult.data) {
+    setCache(cacheKey, tencentResult.data)
     return tencentResult
   }
 
-  // 腾讯失败，尝试新浪
+  // 新浪财经
   const sinaResult = await fetchFromSina(symbol, market)
-  if (sinaResult.success) {
+  if (sinaResult.success && sinaResult.data) {
+    setCache(cacheKey, sinaResult.data)
     return sinaResult
   }
 
-  // 都失败
+  // Yahoo Finance 备用
+  const yahooResult = await fetchFromYahoo(symbol, market)
+  if (yahooResult.success && yahooResult.data) {
+    setCache(cacheKey, yahooResult.data)
+    return yahooResult
+  }
+
+  // 全部失败
   return {
     success: false,
-    error: tencentResult.error || sinaResult.error || '获取失败'
+    error: tencentResult.error || sinaResult.error || yahooResult.error || '获取失败',
+    source: 'none'
   }
 }
 
@@ -225,16 +413,31 @@ export async function getStockQuote(symbol: string, market: string = 'A'): Promi
  * 批量获取股票行情
  */
 export async function getBatchQuotes(
-  stocks: Array<{ symbol: string; market: string }>
-): Promise<Record<string, StockQuote>> {
-  const results: Record<string, StockQuote> = {}
+  stocks: Array<{ symbol: string; market: string }>,
+  useCache: boolean = true
+): Promise<Record<string, EnhancedStockQuote | null>> {
+  const results: Record<string, EnhancedStockQuote | null> = {}
+  const toFetch: Array<{ symbol: string; market: string }> = []
 
-  // 并行获取（限制并发数）
+  // 检查缓存
+  for (const stock of stocks) {
+    const cacheKey = makeCacheKey(stock.symbol, stock.market)
+    if (useCache) {
+      const cached = getCache<EnhancedStockQuote>(cacheKey)
+      if (cached) {
+        results[stock.symbol] = cached
+        continue
+      }
+    }
+    toFetch.push(stock)
+  }
+
+  // 并行获取未缓存的
   const batchSize = 10
-  for (let i = 0; i < stocks.length; i += batchSize) {
-    const batch = stocks.slice(i, i + batchSize)
+  for (let i = 0; i < toFetch.length; i += batchSize) {
+    const batch = toFetch.slice(i, i + batchSize)
     const promises = batch.map(async (stock) => {
-      const result = await getStockQuote(stock.symbol, stock.market)
+      const result = await getStockQuote(stock.symbol, stock.market, false)
       return { stock, result }
     })
 
@@ -242,9 +445,21 @@ export async function getBatchQuotes(
     batchResults.forEach(({ stock, result }) => {
       if (result.success && result.data) {
         results[stock.symbol] = result.data
+      } else {
+        results[stock.symbol] = null
       }
     })
   }
 
   return results
+}
+
+/**
+ * 刷新单个股票缓存
+ */
+export async function refreshStockQuote(
+  symbol: string,
+  market: string
+): Promise<StockServiceResult> {
+  return getStockQuote(symbol, market, false)
 }

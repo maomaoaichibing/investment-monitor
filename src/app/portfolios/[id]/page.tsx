@@ -270,7 +270,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
                               className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
                               asChild
                             >
-                              <Link href={`/thesis/${position.thesis[0]?.id || ''}`}>
+                              <Link href={`/theses/${position.thesis[0]?.id || ''}`}>
                                 <FileText className="h-3 w-3 mr-1" />
                                 查看投资论题
                               </Link>

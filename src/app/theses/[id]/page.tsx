@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import { db } from '@/lib/db'
 import PillarsTree from '@/components/thesis/pillars-tree'
-import MonitorPlanView from '@/app/thesis/[thesisId]/MonitorPlanView'
+import MonitorPlanView from '@/components/monitor-plan/MonitorPlanView'
 import { HealthScoreRing } from '@/components/dashboard/health-score-ring'
 import { ThinkingProcess } from '@/components/ui/thinking-process'
 import { thesisToThinkingSteps, pillarsToHealthScoreSteps } from '@/lib/thesis-thinking-steps'

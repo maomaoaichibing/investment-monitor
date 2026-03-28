@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -16,97 +16,30 @@ import {
   Briefcase,
   TrendingUp,
   TrendingDown,
-  Minus
+  Minus,
+  Loader2
 } from 'lucide-react'
 
-// Mock 论题数据
-const mockTheses = [
-  {
-    id: 'thesis-1',
-    position: { id: 'pos-1', symbol: 'NVDA', assetName: 'NVIDIA 英伟达' },
-    portfolio: { id: '1', name: '科技成长组合' },
-    title: 'AI 算力需求持续爆发',
-    summary: '数据中心 GPU 需求在 AI 训练和推理双轮驱动下持续增长，H100 市占率超 90%',
-    healthScore: 85,
-    investmentStyle: 'growth',
-    holdingPeriod: 'long_term',
-    status: 'generated',
-    pillars: [
-      { name: 'AI 算力需求', status: 'healthy' },
-      { name: 'H100 市占率', status: 'healthy' },
-      { name: '数据中心营收增长', status: 'healthy' }
-    ],
-    lastUpdate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'thesis-2',
-    position: { id: 'pos-2', symbol: 'MU', assetName: '美光科技' },
-    portfolio: { id: '1', name: '科技成长组合' },
-    title: 'HBM 存储周期上行',
-    summary: 'HBM3e 供不应求，美光份额从 10% 提升到 28%，存储周期确认上行',
-    healthScore: 72,
-    investmentStyle: 'growth',
-    holdingPeriod: 'medium_term',
-    status: 'generated',
-    pillars: [
-      { name: 'HBM 份额', status: 'healthy' },
-      { name: 'DRAM 均价', status: 'warning' },
-      { name: '营收增速', status: 'healthy' }
-    ],
-    lastUpdate: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'thesis-3',
-    position: { id: 'pos-3', symbol: 'NIO', assetName: '蔚来' },
-    portfolio: { id: '3', name: '中国复苏组合' },
-    title: '中国电动车市场份额争夺',
-    summary: '品牌高端定位 + 换电网络构建护城河，但面临价格战和交付量压力',
-    healthScore: 35,
-    investmentStyle: 'growth',
-    holdingPeriod: 'medium_term',
-    status: 'generated',
-    pillars: [
-      { name: '月交付量', status: 'critical' },
-      { name: '毛利率', status: 'critical' },
-      { name: '现金储备', status: 'healthy' }
-    ],
-    lastUpdate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'thesis-4',
-    position: { id: 'pos-4', symbol: 'BABA', assetName: '阿里巴巴' },
-    portfolio: { id: '3', name: '中国复苏组合' },
-    title: '中国消费复苏 + 云业务分拆',
-    summary: '核心电商稳定 + 云智能独立后估值重塑，回购 250 亿美元提振信心',
-    healthScore: 68,
-    investmentStyle: 'value',
-    holdingPeriod: 'long_term',
-    status: 'generated',
-    pillars: [
-      { name: 'GMV 增速', status: 'warning' },
-      { name: '云营收增速', status: 'healthy' },
-      { name: '回购计划', status: 'healthy' }
-    ],
-    lastUpdate: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()
-  },
-  {
-    id: 'thesis-5',
-    position: { id: 'pos-5', symbol: 'TSM', assetName: '台积电' },
-    portfolio: { id: '1', name: '科技成长组合' },
-    title: '全球先进制程垄断',
-    summary: '3nm/2nm 独家供应 Apple + NVIDIA，竞争对手差距持续拉大',
-    healthScore: 90,
-    investmentStyle: 'growth',
-    holdingPeriod: 'long_term',
-    status: 'generated',
-    pillars: [
-      { name: '先进制程占比', status: 'healthy' },
-      { name: '产能利用率', status: 'healthy' },
-      { name: '毛利率', status: 'healthy' }
-    ],
-    lastUpdate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
+interface ThesisItem {
+  id: string
+  position: {
+    id: string
+    symbol: string
+    assetName: string
   }
-]
+  portfolio: {
+    id: string
+    name: string
+  }
+  title: string
+  summary: string
+  healthScore: number
+  investmentStyle: string
+  holdingPeriod: string
+  status: string
+  pillars: { name: string; status: string }[]
+  lastUpdate: string
+}
 
 const formatDate = (dateStr: string) => {
   const date = new Date(dateStr)
@@ -160,9 +93,50 @@ const TrendIcon = ({ status }: { status: string }) => {
 }
 
 export default function ThesesPage() {
-  const [theses] = useState(mockTheses)
+  const [theses, setTheses] = useState<ThesisItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [filterStatus, setFilterStatus] = useState<string>('all')
+
+  useEffect(() => {
+    fetchTheses()
+  }, [])
+
+  const fetchTheses = async () => {
+    try {
+      setLoading(true)
+      const res = await fetch('/api/theses')
+      if (!res.ok) throw new Error('获取论题失败')
+      const data = await res.json()
+      // 转换 API 数据格式为组件期望的格式
+      const thesesData = data.data?.theses || data.theses || []
+      const mappedTheses: ThesisItem[] = thesesData.map((t: any) => {
+        let pillars: { name: string; status: string }[] = []
+        try {
+          pillars = t.pillarsJson ? JSON.parse(t.pillarsJson) : []
+        } catch {}
+        return {
+          id: t.id,
+          position: t.position,
+          portfolio: t.portfolio,
+          title: t.title,
+          summary: t.summary,
+          healthScore: t.healthScore || 80,
+          investmentStyle: t.investmentStyle,
+          holdingPeriod: t.holdingPeriod,
+          status: t.status,
+          pillars,
+          lastUpdate: t.updatedAt
+        }
+      })
+      setTheses(mappedTheses)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '未知错误')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const filteredTheses = theses.filter(thesis => {
     const matchesSearch =
@@ -173,6 +147,34 @@ export default function ThesesPage() {
     return matchesSearch && matchesStatus
   })
 
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <span className="ml-3 text-muted-foreground">加载中...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12 text-red-600">
+              <p>加载失败: {error}</p>
+              <Button variant="outline" className="mt-4" onClick={fetchTheses}>
+                重试
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
@@ -182,7 +184,7 @@ export default function ThesesPage() {
             投资论题
           </h1>
           <p className="text-muted-foreground mt-2">
-            管理所有持仓的投资逻辑和核心分析
+            管理所有持仓的投资逻辑和核心分析（共 {theses.length} 个论题）
           </p>
         </div>
         <Button asChild>
@@ -224,40 +226,47 @@ export default function ThesesPage() {
               <p className="text-muted-foreground mb-6">
                 {searchTerm || filterStatus !== 'all' ? '没有找到匹配的投资论题' : '为持仓生成投资论题，开始建立投资逻辑体系'}
               </p>
+              <Button asChild>
+                <Link href="/portfolios">
+                  去添加持仓
+                </Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4">
           {filteredTheses.map((thesis) => {
-            const healthColor = getHealthColor(thesis.healthScore)
+            const healthColor = getHealthColor(thesis.healthScore || 80)
 
             return (
               <Card key={thesis.id}
-                className={`hover:bg-accent/50 transition-colors ${thesis.healthScore < 40 ? 'border-l-4 border-l-red-400 bg-red-50/30' : ''}`}>
+                className={`hover:bg-accent/50 transition-colors ${(thesis.healthScore || 80) < 40 ? 'border-l-4 border-l-red-400 bg-red-50/30' : ''}`}>
                 <CardContent className="pt-6">
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">
-                      <HealthRing score={thesis.healthScore} />
+                      <HealthRing score={thesis.healthScore || 80} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-1 flex-wrap">
                           <span className="font-bold text-xl">{thesis.position.symbol}</span>
                           <span className="text-muted-foreground">{thesis.position.assetName}</span>
-                          <Badge variant="outline">{investmentStyleLabels[thesis.investmentStyle]}</Badge>
-                          <Badge variant="outline">{holdingPeriodLabels[thesis.holdingPeriod]}</Badge>
+                          <Badge variant="outline">{investmentStyleLabels[thesis.investmentStyle] || thesis.investmentStyle}</Badge>
+                          <Badge variant="outline">{holdingPeriodLabels[thesis.holdingPeriod] || thesis.holdingPeriod}</Badge>
                         </div>
                         <h3 className="font-medium mb-2">{thesis.title}</h3>
                         <p className="text-sm text-muted-foreground line-clamp-2 mb-3">{thesis.summary}</p>
 
                         {/* 关键指标 */}
-                        <div className="grid grid-cols-3 gap-2 mb-3">
-                          {thesis.pillars.map((pillar, idx) => (
-                            <div key={idx} className="flex items-center gap-2 text-sm bg-muted/50 rounded px-2 py-1">
-                              <TrendIcon status={pillar.status} />
-                              <span className="truncate">{pillar.name}</span>
-                            </div>
-                          ))}
-                        </div>
+                        {thesis.pillars && thesis.pillars.length > 0 && (
+                          <div className="grid grid-cols-3 gap-2 mb-3">
+                            {thesis.pillars.slice(0, 3).map((pillar, idx) => (
+                              <div key={idx} className="flex items-center gap-2 text-sm bg-muted/50 rounded px-2 py-1">
+                                <TrendIcon status={pillar.status} />
+                                <span className="truncate">{pillar.name}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
                           <Link href={`/portfolios/${thesis.portfolio.id}`} className="flex items-center gap-1 hover:text-primary">

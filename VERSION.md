@@ -2,7 +2,7 @@
 
 ## 当前版本
 
-**v1.4** (2026-03-28)
+**v1.5** (2026-03-28)
 
 ### 功能清单
 - Portfolio管理 - 投资组合CRUD
@@ -17,6 +17,10 @@
 - **投资组合列表页** - /portfolios Server Component + 真实数据库CUID
 - **论题详情页** - /theses/[id] 动态路由
 - **收益率颜色修复** - 正收益绿色、负收益红色
+- **AI思维过程组件** - 通用 `<ThinkingProcess />` 组件，支持 fullpage/card/inline 三种模式
+- **论题详情页思维链** - AI 分析过程回放 + 健康度评分分解
+- **提醒卡片AI分析链** - 展开查看 AI 对提醒的分析过程
+- **SSE流式论题生成** - POST /api/theses/generate 实时流式接口
 
 ### 技术栈
 - Next.js 14 + TypeScript + Tailwind CSS
@@ -36,6 +40,7 @@
 
 | 版本 | 日期 | 提交/commit | 更新内容 |
 |------|------|-------------|----------|
+| v1.5 | 2026-03-28 | f565159 | AI思维过程组件、论题详情页思维链展示、提醒卡片AI分析链、SSE流式论题生成 |
 | v1.4 | 2026-03-28 | cca278c | portfolios页面改为Server Component，修复链接CUID和收益率颜色逻辑 |
 | v1.3 | 2026-03-27 | e39c1f7 | 投资监控系统多页面修复：portfolios列表页、theses详情路由(/theses/[id])、首页数据一致性 |
 | v1.2 | 2026-03-27 | 8b8cc23 | 健康度环形进度条SVG实现、Sparkline迷你折线图渲染修复 |

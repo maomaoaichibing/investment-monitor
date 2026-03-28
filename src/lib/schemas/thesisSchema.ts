@@ -32,16 +32,21 @@ export const MonitorIndicatorSchema = z.object({
 })
 
 // 议题支柱Schema（核心增强版 - 按#1 Prompt）
+// 支持做多仓位(bullishSignal)和做空仓位(bearishSignal)
 export const ThesisPillarSchema = z.object({
   id: z.number(),
   name: z.string(),
   coreAssumption: z.string(), // 必须可证伪、具体、包含数字
   conviction: z.number().min(1).max(10),
   monitorIndicators: z.array(MonitorIndicatorSchema),
-  bullishSignal: z.string(),
+  bullishSignal: z.string().optional(),  // 做多信号
+  bearishSignal: z.string().optional(),   // 做空信号
   riskTrigger: z.string(),
   impactWeight: z.number().min(0).max(100).optional(), // 权重，所有议题之和=100
-})
+}).refine(
+  data => data.bullishSignal !== undefined || data.bearishSignal !== undefined,
+  { message: '每个议题必须包含 bullishSignal 或 bearishSignal 中的至少一个' }
+)
 
 // 核心论题Schema（兼容旧格式）
 export const CoreThesisSchema = z.object({

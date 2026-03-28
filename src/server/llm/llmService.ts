@@ -36,7 +36,7 @@ export class LLMService {
 
 【核心概念】
 - 议题树(Pillars)：把一个持仓的投资逻辑拆解成3-5个核心议题，每个议题都是可以被数据验证或证伪的假设
-- 每个议题包含：核心假设、监控指标、看多信号、风险触发条件
+- 每个议题包含：核心假设、监控指标、看多/看空信号、风险触发条件
 
 【输出格式 - 必须严格按此JSON格式】
 {
@@ -55,7 +55,8 @@ export class LLMService {
           "dataSource": "可选的数据来源建议"
         }
       ],
-      "bullishSignal": "什么数据/事件说明逻辑成立",
+      "bullishSignal": "做多仓位填写：什么数据/事件说明做多逻辑成立",
+      "bearishSignal": "做空仓位填写：什么数据/事件说明做空逻辑成立",
       "riskTrigger": "什么数据/事件说明逻辑可能失效"
     }
   ],
@@ -67,11 +68,12 @@ export class LLMService {
 
 【重要规则】
 1. pillars必须返回3-5个议题
-2. 每个议题的monitorIndicators必须包含2-4个具体指标
-3. conviction是1-10的数字，表示对这个议题的信心度
-4. 所有type必须是：fundamental, industry, macro, technical, sentiment, price 之一
-5. frequency必须是：realtime, daily, weekly, monthly, quarterly 之一
-6. 只返回JSON，不要包含任何解释或其他内容`
+2. 做多仓位使用bullishSignal，做空仓位使用bearishSignal
+3. 每个议题的monitorIndicators必须包含2-4个具体指标
+4. conviction是1-10的数字，表示对这个议题的信心度
+5. 所有type必须是：fundamental, industry, macro, technical, sentiment, price 之一
+6. frequency必须是：realtime, daily, weekly, monthly, quarterly 之一
+7. 只返回JSON，不要包含任何解释或其他内容`
             },
             {
               role: 'user',
@@ -151,6 +153,7 @@ export class LLMService {
               }))
             : [],
           bullishSignal: p.bullish_signal || p.bullishSignal || '',
+          bearishSignal: p.bearish_signal || p.bearishSignal || '',
           riskTrigger: p.risk_trigger || p.riskTrigger || '',
           impactWeight: p.impact_weight || p.impactWeight || Math.floor(100 / (data.pillars.length || 1))
         }))

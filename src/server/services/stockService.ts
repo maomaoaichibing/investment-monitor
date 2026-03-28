@@ -117,7 +117,7 @@ async function fetchFromTencent(symbol: string, market: string): Promise<StockSe
     const low = parseFloat(fields[34]) || 0
     const change = price - prevClose
     const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0
-    const amplitude = prevClose > 0 ? ((high - low) / prevClose) * 100 : 0
+    let amplitude = prevClose > 0 ? ((high - low) / prevClose) * 100 : 0
 
     // 港股特有字段解析
     let week52High: number | undefined
@@ -127,15 +127,18 @@ async function fetchFromTencent(symbol: string, market: string): Promise<StockSe
     let dividend: number | undefined
 
     if (market.toUpperCase() === 'HK' && fields.length > 50) {
-      // 字段50-55包含52周数据
-      week52High = parseFloat(fields[47]) || undefined
-      week52Low = parseFloat(fields[48]) || undefined
-      // 市值在字段39-40
-      marketCap = parseFloat(fields[39]) ? parseFloat(fields[39]) * 100000000 : undefined
-      // 市盈率字段
+      // 字段33=52周最高, 34=52周最低
+      week52High = parseFloat(fields[48]) || undefined
+      week52Low = parseFloat(fields[49]) || undefined
+      // 字段37=成交额(万), 38=额(万)
+      // 市值估算: 成交额/换手率 * 10000
+      marketCap = parseFloat(fields[37]) ? parseFloat(fields[37]) * 100000000 / 0.02 : undefined
+      // 市盈率字段39
       pe = parseFloat(fields[39]) || undefined
-      // 股息率字段
+      // 股息率字段57
       dividend = parseFloat(fields[57]) || undefined
+      // 振幅字段43
+      amplitude = parseFloat(fields[43]) || 0
     }
 
     // 美股特有字段解析

@@ -57,7 +57,7 @@ export function PositionPriceCard({
   const fetchQuote = async () => {
     try {
       setError(null)
-      const response = await fetch(`/api/stock/quote?symbol=${symbol}&market=${market}`)
+      const response = await fetch(`/api/stock/quote/${symbol}?market=${market}`)
       const data = await response.json()
 
       if (data.success && data.data) {

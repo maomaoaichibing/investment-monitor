@@ -156,22 +156,35 @@ export class ThesisService {
       throw new Error('Position not found')
     }
 
-    // 2. 删除旧的thesis（如果存在）
+    // 2. 先删除关联数据（避免外键约束）
+    // 查询旧的thesis
+    const oldTheses = await db.thesis.findMany({
+      where: { positionId },
+      select: { id: true }
+    })
+
+    // 删除关联的MonitorPlan和EventAnalysis
+    for (const thesis of oldTheses) {
+      await db.monitorPlan.deleteMany({ where: { thesisId: thesis.id } })
+      await db.eventAnalysis.deleteMany({ where: { thesisId: thesis.id } })
+    }
+
+    // 3. 删除旧的thesis
     await db.thesis.deleteMany({
       where: { positionId }
     })
     console.log(`[Thesis] Deleted old thesis for ${position.assetName}`)
 
-    // 3. 构建输入数据，根据持仓方向设置正确的做多/做空
+    // 4. 构建输入数据，根据持仓方向设置正确的做多/做空
     let direction = '做多'
     // 从holdingStyle或symbol判断做空标的
-    if (position.holdingStyle?.includes('short') || 
+    if (position.holdingStyle?.includes('short') ||
         position.symbol.toUpperCase().includes('SQQQ') ||
         position.symbol.toUpperCase().includes('SOXS') ||
         position.symbol.toUpperCase().includes('JDST')) {
       direction = '做空'
     }
-    
+
     const thesisInput: ThesisInput = {
       symbol: position.symbol,
       assetName: position.assetName,
@@ -182,15 +195,15 @@ export class ThesisService {
       holdingPeriod: position.holdingStyle || 'long_term'
     }
 
-    // 4. 调用LLM重新生成论题
+    // 5. 调用LLM重新生成论题
     console.log(`[Thesis] Regenerating thesis for ${position.assetName} (${position.symbol}), direction: ${direction}...`)
     const rawOutput = await llmService.generateThesis(thesisInput)
     console.log(`[Thesis] Regenerated thesis with ${rawOutput.pillars?.length || 0} pillars, health score: ${rawOutput.overallHealthScore || 'N/A'}`)
 
-    // 5. 使用Zod校验输出
+    // 6. 使用Zod校验输出
     const validatedThesis = ThesisSchema.parse(rawOutput)
 
-    // 6. 存入数据库
+    // 7. 存入数据库
     const newThesis = await db.thesis.create({
       data: {
         positionId: position.id,

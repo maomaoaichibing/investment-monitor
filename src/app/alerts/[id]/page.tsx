@@ -3,24 +3,24 @@ import { notFound } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { 
-  AlertTriangle, 
-  Bell, 
-  CheckCircle, 
-  Clock, 
-  Eye, 
-  TrendingUp, 
-  TrendingDown, 
+import {
+  AlertTriangle,
+  Bell,
+  CheckCircle,
+  Clock,
+  Eye,
+  TrendingUp,
+  TrendingDown,
   XCircle,
-  ArrowLeft,
   FileText,
   Calendar,
   Hash,
-  Trash2,
-  Briefcase
+  Briefcase,
+  ArrowLeft
 } from 'lucide-react'
 import { alertService } from '@/server/services/alertService'
 import { getAlertLevelColor, formatDateTime } from '@/lib/utils'
+import { AlertActions } from '@/components/alert/AlertActions'
 
 interface AlertDetailPageProps {
   params: {
@@ -182,11 +182,11 @@ export default async function AlertDetailPage({ params }: AlertDetailPageProps) 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Event Type</p>
-                    <p className="font-medium capitalize">{alert.event.eventType.replace('_', ' ')}</p>
+                    <p className="font-medium capitalize">{alert.event.eventType?.replace('_', ' ') ?? 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Symbol</p>
-                    <p className="font-medium">{alert.event.symbol}</p>
+                    <p className="font-medium">{alert.event.symbol ?? 'N/A'}</p>
                   </div>
                 </div>
                 
@@ -213,25 +213,25 @@ export default async function AlertDetailPage({ params }: AlertDetailPageProps) 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Relevance Score</p>
-                    <p className="font-medium">{alert.eventAnalysis.relevanceScore.toFixed(2)}</p>
+                    <p className="font-medium">{alert.eventAnalysis.relevanceScore?.toFixed(2) ?? 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">Thesis Impact</p>
                     <p className="font-medium flex items-center gap-2">
                       {getImpactIcon(alert.eventAnalysis.thesisImpact)}
-                      <span className="capitalize">{alert.eventAnalysis.thesisImpact}</span>
+                      <span className="capitalize">{alert.eventAnalysis.thesisImpact ?? 'unknown'}</span>
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground mb-1">影响级别</p>
-                    <p className="font-medium capitalize">{alert.eventAnalysis.impactLevel}</p>
+                    <p className="font-medium capitalize">{alert.eventAnalysis.impactLevel ?? 'unknown'}</p>
                   </div>
                 </div>
                 
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">相关投资论题</p>
-                  <Button variant="link" size="sm" className="p-0 h-auto">
-                    <Link href={`/thesis/${alert.eventAnalysis.thesisId}`}>
+                  <Button variant="link" size="sm" className="p-0 h-auto" asChild>
+                    <Link href={`/theses/${alert.eventAnalysis.thesisId}`}>
                       查看论题
                     </Link>
                   </Button>
@@ -242,42 +242,10 @@ export default async function AlertDetailPage({ params }: AlertDetailPageProps) 
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-4">
-          <Button
-            variant="outline"
-            onClick={() => {
-              // This would typically redirect to mark as read action
-              window.location.href = `/api/alerts/${alert.id}`
-              window.location.reload()
-            }}
-            disabled={alert.status === 'read'}
-          >
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Mark as Read
-          </Button>
-          
-          {alert.status !== 'dismissed' && (
-            <Button
-              variant="destructive"
-              onClick={() => {
-                if (confirm('Are you sure you want to dismiss this alert?')) {
-                  window.location.href = `/api/alerts/${alert.id}`
-                  window.location.reload()
-                }
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-2" />
-              Dismiss Alert
-            </Button>
-          )}
-          
-          <Button variant="outline" asChild>
-            <Link href="/alerts">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Alerts
-            </Link>
-          </Button>
-        </div>
+        <AlertActions
+          alertId={alert.id}
+          alertStatus={alert.status}
+        />
       </div>
     </div>
   )

@@ -14,6 +14,8 @@ import { db } from '@/lib/db'
 import PillarsTree from '@/components/thesis/pillars-tree'
 import MonitorPlanView from '@/app/thesis/[thesisId]/MonitorPlanView'
 import { HealthScoreRing } from '@/components/dashboard/health-score-ring'
+import { ThinkingProcess } from '@/components/ui/thinking-process'
+import { thesisToThinkingSteps, pillarsToHealthScoreSteps } from '@/lib/thesis-thinking-steps'
 
 interface ThesisDetailPageProps {
   params: {
@@ -66,6 +68,21 @@ export default async function ThesisDetailPage({ params }: ThesisDetailPageProps
   } catch {
     pillars = []
   }
+
+  // 生成思维过程步骤
+  const thinkingSteps = thesisToThinkingSteps({
+    id: thesis.id,
+    summary: thesis.summary || '',
+    healthScore: thesis.healthScore || 80,
+    pillarsJson: thesis.pillarsJson || '[]',
+    fragilePointsJson: thesis.fragilePointsJson || '[]',
+    coreThesisJson: thesis.coreThesisJson || '[]',
+    pricePhasesJson: thesis.pricePhasesJson || '[]',
+    position: thesis.position
+  })
+
+  // 生成健康度评分分解步骤
+  const healthScoreSteps = pillarsToHealthScoreSteps(pillars, thesis.healthScore || 80)
 
   // 格式化日期
   const formatDate = (date: Date) => {
@@ -176,6 +193,48 @@ export default async function ThesisDetailPage({ params }: ThesisDetailPageProps
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* AI 分析过程回放 */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            🧠 AI 分析过程
+          </CardTitle>
+          <CardDescription>
+            查看 AI 生成此论题时的完整分析思路
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThinkingProcess
+            steps={thinkingSteps}
+            title={`AI 分析 ${thesis.position.assetName} 的投资论题`}
+            progress={100}
+            variant="card"
+            defaultExpanded={false}
+          />
+        </CardContent>
+      </Card>
+
+      {/* 健康度评分分解 */}
+      <Card className="mb-6">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2">
+            📊 评分分解
+          </CardTitle>
+          <CardDescription>
+            各投资支柱对综合健康度的贡献分析
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ThinkingProcess
+            steps={healthScoreSteps}
+            title="健康度评分详情"
+            progress={100}
+            variant="card"
+            defaultExpanded={true}
+          />
         </CardContent>
       </Card>
 

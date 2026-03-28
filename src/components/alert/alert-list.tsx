@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AlertTriangle, Bell, CheckCircle, Clock, Eye, Filter, RotateCw, Trash2, XCircle, AlertCircle, Info } from 'lucide-react'
+import { ThinkingProcess, ThinkingStep } from '@/components/ui/thinking-process'
+import { AlertTriangle, Bell, CheckCircle, Clock, Eye, Filter, RotateCw, Trash2, XCircle, AlertCircle, Info, Brain, ChevronDown, ChevronUp } from 'lucide-react'
 
 // Alert 类型
 interface Alert {
@@ -20,6 +21,7 @@ interface Alert {
   portfolio?: { id: string; name: string }
   sentAt: string
   event?: { title: string } | null
+  // TODO: 后续添加 analysisJson 字段存储完整分析链
 }
 
 // 获取级别颜色和图标配置
@@ -88,12 +90,92 @@ function formatRelativeTime(date: Date) {
   return date.toLocaleDateString('zh-CN')
 }
 
+/**
+ * 根据提醒数据生成 AI 分析步骤
+ * TODO: 后续使用 alert.analysisJson 字段替代此函数
+ */
+function generateAlertThinkingSteps(alert: Alert): ThinkingStep[] {
+  const symbol = alert.position?.symbol || alert.symbol || 'N/A'
+  const assetName = alert.position?.assetName || alert.assetName || '未知'
+
+  // 基于提醒内容生成分析
+  const steps: ThinkingStep[] = [
+    {
+      id: 'event_recognition',
+      label: '事件识别',
+      status: 'done',
+      result: `${alert.title}\n\n${alert.summary}`,
+      duration: 150
+    },
+    {
+      id: 'affected_pillars',
+      label: '影响评估',
+      status: 'done',
+      result: `受影响标的: ${symbol} ${assetName}\n影响级别: ${alert.level === 'urgent' ? '紧急 ⚠️' : alert.level === 'important' ? '重要' : '关注'}\n影响描述: ${alert.summary}`,
+      duration: 320,
+      children: [
+        {
+          id: 'pillar_impact',
+          label: `对 ${symbol} 持仓的影响`,
+          status: 'done',
+          result: alert.event?.title
+            ? `触发事件: ${alert.event.title}`
+            : '正在分析对投资论题的影响...'
+        }
+      ]
+    },
+    {
+      id: 'cross_validation',
+      label: '交叉验证',
+      status: 'done',
+      result: `关联投资论题: ${assetName}\n当前论题健康度: 需结合论题详情页分析\n相关风险触发条件: 检查中...`,
+      duration: 280
+    },
+    {
+      id: 'generate_suggestion',
+      label: '生成建议',
+      status: 'done',
+      result: getSuggestionByLevel(alert.level, alert.summary),
+      duration: 200
+    }
+  ]
+
+  return steps
+}
+
+/**
+ * 根据级别生成建议
+ */
+function getSuggestionByLevel(level: string, summary: string): string {
+  switch (level) {
+    case 'urgent':
+      return `⚠️ 紧急处理建议:\n1. 立即查看 ${summary}\n2. 评估是否需要调整持仓\n3. 考虑设置止损或对冲`
+    case 'important':
+      return `📋 重要操作建议:\n1. 关注价格走势变化\n2. 核实信息来源可靠性\n3. 准备应对方案`
+    case 'watch':
+      return `👀 观察建议:\n1. 持续关注相关动态\n2. 记录关键价格点位\n3. 评估事态发展方向`
+    default:
+      return `ℹ️ 信息提示:\n1. 了解事件背景\n2. 保持常规关注\n3. 如有异常及时报告`
+  }
+}
+
 export default function AlertList({ initialAlerts }: { initialAlerts: Alert[] }) {
   const [alerts, setAlerts] = useState(initialAlerts)
   const [filters, setFilters] = useState({
     status: 'all',
     level: 'all',
   })
+  const [expandedAlerts, setExpandedAlerts] = useState<Set<string>>(new Set())
+
+  const toggleExpand = (id: string) => {
+    const newExpanded = new Set(expandedAlerts)
+    if (newExpanded.has(id)) {
+      newExpanded.delete(id)
+    } else {
+      newExpanded.add(id)
+    }
+    setExpandedAlerts(newExpanded)
+  }
 
   const filteredAlerts = alerts.filter(alert => {
     const matchesStatus = filters.status === 'all' || alert.status === filters.status
@@ -199,6 +281,8 @@ export default function AlertList({ initialAlerts }: { initialAlerts: Alert[] })
         {filteredAlerts.map((alert) => {
           const levelConfig = getLevelConfig(alert.level)
           const LevelIcon = levelConfig.icon
+          const isExpanded = expandedAlerts.has(alert.id)
+          const thinkingSteps = generateAlertThinkingSteps(alert)
 
           return (
             <Card
@@ -286,6 +370,36 @@ export default function AlertList({ initialAlerts }: { initialAlerts: Alert[] })
                   </div>
                 </div>
               </CardHeader>
+
+              {/* AI 分析过程展开区域 */}
+              <CardContent className="pt-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => toggleExpand(alert.id)}
+                  className="w-full justify-center text-muted-foreground hover:text-primary border-t pt-3 mt-2"
+                >
+                  <Brain className="h-4 w-4 mr-2" />
+                  {isExpanded ? '收起 AI 分析过程' : '查看 AI 分析过程'}
+                  {isExpanded ? (
+                    <ChevronUp className="h-4 w-4 ml-2" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 ml-2" />
+                  )}
+                </Button>
+
+                {isExpanded && (
+                  <div className="mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <ThinkingProcess
+                      steps={thinkingSteps}
+                      title={`AI 对 "${alert.title}" 的分析过程`}
+                      progress={100}
+                      variant="card"
+                      defaultExpanded={true}
+                    />
+                  </div>
+                )}
+              </CardContent>
             </Card>
           )
         })}

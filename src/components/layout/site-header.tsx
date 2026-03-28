@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Bell, Home, Briefcase, AlertTriangle, BarChart, Settings, TestTube } from 'lucide-react'
+import { Bell, Home, Briefcase, AlertTriangle, BarChart, Settings, TestTube, History } from 'lucide-react'
 import { db } from '@/lib/db'
+import { VersionBadge } from '@/components/version/version-badge'
 
 export async function SiteHeader() {
   // 从数据库获取未读提醒数量
@@ -17,6 +18,7 @@ export async function SiteHeader() {
           <Link href="/" className="flex items-center space-x-2">
             <BarChart className="h-6 w-6" />
             <span className="font-bold">投资监控系统</span>
+            <VersionBadge />
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
@@ -52,6 +54,13 @@ export async function SiteHeader() {
             >
               <TestTube className="h-4 w-4" />
               测试
+            </Link>
+            <Link
+              href="/changelog"
+              className="text-sm font-medium text-muted-foreground hover:text-primary flex items-center gap-2"
+            >
+              <History className="h-4 w-4" />
+              版本管理
             </Link>
           </nav>
         </div>

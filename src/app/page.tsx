@@ -4,6 +4,7 @@ import AIFeedV2 from '@/components/dashboard/ai-feed-v2'
 import ThesisCardV2 from '@/components/dashboard/thesis-card-v2'
 import PortfolioOverviewV2 from '@/components/dashboard/portfolio-overview-v2'
 import UpcomingEvents from '@/components/dashboard/upcoming-events'
+import { VersionBadge } from '@/components/version/version-badge'
 
 export default async function HomePage() {
   // 从数据库获取真实统计数据
@@ -55,11 +56,14 @@ export default async function HomePage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">仪表盘</h1>
-        <p className="text-muted-foreground">
-          监控您的投资逻辑，接收智能提醒
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">仪表盘</h1>
+          <p className="text-muted-foreground">
+            监控您的投资逻辑，接收智能提醒
+          </p>
+        </div>
+        <VersionBadge className="text-sm" />
       </div>
 
       <div className="grid gap-6">

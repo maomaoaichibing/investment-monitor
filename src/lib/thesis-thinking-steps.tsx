@@ -70,18 +70,14 @@ export function thesisToThinkingSteps(thesis: ThesisCoreData): ThinkingStep[] {
       id: 'identify_pillars',
       label: '识别核心投资支柱',
       status: 'done',
-      result: pillars.length > 0 ? pillars.map((p, i) => ({
-        id: `pillar_${i}`,
-        label: `${p.name}（权重 ${p.impactWeight || 30}%）`,
-        status: 'done' as const,
-        result: `核心假设: ${p.coreAssumption || '未提供'}\n看多信号: ${p.bullishSignal || '未提供'}\n风险触发: ${p.riskTrigger || '未提供'}`,
-        children: p.conviction ? [{
-          id: `pillar_${i}_conviction`,
-          label: `信念度评分: ${p.conviction}/10`,
-          status: 'done' as const,
-          duration: 50
-        }] : undefined
-      })) : '未识别到投资支柱',
+      result: pillars.length > 0
+        ? pillars.map((p, i) =>
+            `${i + 1}. ${p.name}（权重 ${p.impactWeight || 30}%）\n` +
+            `   核心假设: ${p.coreAssumption || '未提供'}\n` +
+            `   信号: ${p.bullishSignal || p.bearishSignal || '未提供'}\n` +
+            `   风险: ${p.riskTrigger || '未提供'}`
+          ).join('\n\n')
+        : '未识别到投资支柱',
       duration: 1200,
       children: pillars.map((p, i) => ({
         id: `pillar_${i}`,

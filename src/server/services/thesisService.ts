@@ -137,6 +137,94 @@ export class ThesisService {
   }
 
   /**
+   * 重新生成指定持仓的投资论题（删除旧的，创建新的）
+   */
+  async regenerateThesisForPosition(positionId: string): Promise<{
+    thesis: any;
+    created: boolean;
+    source: 'regenerated';
+  }> {
+    // 1. 获取持仓信息
+    const position = await db.position.findUnique({
+      where: { id: positionId },
+      include: {
+        portfolio: true
+      }
+    })
+
+    if (!position) {
+      throw new Error('Position not found')
+    }
+
+    // 2. 删除旧的thesis（如果存在）
+    await db.thesis.deleteMany({
+      where: { positionId }
+    })
+    console.log(`[Thesis] Deleted old thesis for ${position.assetName}`)
+
+    // 3. 构建输入数据，根据持仓方向设置正确的做多/做空
+    let direction = '做多'
+    // 从holdingStyle或symbol判断做空标的
+    if (position.holdingStyle?.includes('short') || 
+        position.symbol.toUpperCase().includes('SQQQ') ||
+        position.symbol.toUpperCase().includes('SOXS') ||
+        position.symbol.toUpperCase().includes('JDST')) {
+      direction = '做空'
+    }
+    
+    const thesisInput: ThesisInput = {
+      symbol: position.symbol,
+      assetName: position.assetName,
+      market: position.market,
+      investmentThesis: position.investmentThesis,
+      direction,
+      buyPrice: position.costPrice,
+      holdingPeriod: position.holdingStyle || 'long_term'
+    }
+
+    // 4. 调用LLM重新生成论题
+    console.log(`[Thesis] Regenerating thesis for ${position.assetName} (${position.symbol}), direction: ${direction}...`)
+    const rawOutput = await llmService.generateThesis(thesisInput)
+    console.log(`[Thesis] Regenerated thesis with ${rawOutput.pillars?.length || 0} pillars, health score: ${rawOutput.overallHealthScore || 'N/A'}`)
+
+    // 5. 使用Zod校验输出
+    const validatedThesis = ThesisSchema.parse(rawOutput)
+
+    // 6. 存入数据库
+    const newThesis = await db.thesis.create({
+      data: {
+        positionId: position.id,
+        portfolioId: position.portfolioId,
+        title: `${position.assetName}(${position.symbol})投资议题`,
+        summary: rawOutput.thesisSummary || rawOutput.summary || `${position.assetName}投资分析`,
+        content: rawOutput.thesisSummary || rawOutput.summary || '',
+        healthScore: rawOutput.overallHealthScore || 80,
+        investmentStyle: 'growth',
+        holdingPeriod: position.holdingStyle || 'long_term',
+        pricePhasesJson: JSON.stringify(rawOutput.pricePhases || []),
+        coreThesisJson: JSON.stringify(rawOutput.pillars || rawOutput.coreThesis || []),
+        fragilePointsJson: JSON.stringify(rawOutput.fragilePoints || []),
+        monitorTargetsJson: JSON.stringify(rawOutput.monitorTargets || []),
+        pillarsJson: JSON.stringify(rawOutput.pillars || null),
+        status: 'generated'
+      }
+    })
+
+    return {
+      thesis: {
+        ...newThesis,
+        position: {
+          id: position.id,
+          symbol: position.symbol,
+          assetName: position.assetName
+        }
+      },
+      created: true,
+      source: 'regenerated'
+    }
+  }
+
+  /**
    * 获取组合的所有论题
    */
   async getThesesByPortfolio(portfolioId: string): Promise<any[]> {

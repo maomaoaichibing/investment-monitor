@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { PositionPriceCard } from '@/components/stock/position-price-card'
+import { RegenerateThesisButton } from '@/components/thesis/regenerate-thesis-button'
 
 interface PositionDetailPageProps {
   params: {
@@ -319,12 +320,18 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
                 </Link>
               </Button>
             ) : (
-              <Button variant="outline" asChild>
-                <Link href={`/thesis/${position.thesis[0]?.id}`}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  查看详情
-                </Link>
-              </Button>
+              <div className="flex gap-2">
+                <RegenerateThesisButton
+                  positionId={position.id}
+                  positionName={position.assetName}
+                />
+                <Button variant="outline" asChild>
+                  <Link href={`/theses/${position.thesis[0]?.id}`}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    查看详情
+                  </Link>
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>

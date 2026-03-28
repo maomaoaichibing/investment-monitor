@@ -3,8 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Sparkles, AlertTriangle, Info, CheckCircle } from 'lucide-react'
+import { Sparkles, AlertTriangle, Info, CheckCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
+import { AlertApiResponse } from '@/lib/schemas/alertSchema'
 
 // AI 动态项类型
 interface AIFeedItem {
@@ -16,52 +18,51 @@ interface AIFeedItem {
   timestamp: string
 }
 
-// Mock 数据 - 按 prompt 要求填充至少5条示例动态
-// TODO: Replace with API call: GET /api/ai-feed 或 GET /api/alerts
-const mockFeedItems: AIFeedItem[] = [
-  {
-    id: '1',
-    type: 'critical',
-    stockName: '蔚来',
-    stockSymbol: 'NIO',
-    message: '月交付量环比下降23%，核心假设"交付量持续增长"面临挑战',
-    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() // 1小时前
-  },
-  {
-    id: '2',
-    type: 'warning',
-    stockName: '中国海洋石油',
-    stockSymbol: '00883',
-    message: '布伦特原油跌破$70，接近风险触发价$65',
-    timestamp: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3小时前
-  },
-  {
-    id: '3',
-    type: 'info',
-    stockName: '拼多多',
-    stockSymbol: 'PDD',
-    message: 'Q4财报发布，营收增速32%，符合预期',
-    timestamp: new Date(Date.now() - 5 * 60 * 60 * 1000).toISOString() // 5小时前
-  },
-  {
-    id: '4',
-    type: 'routine',
-    stockName: '美光科技',
-    stockSymbol: 'MU',
-    message: '例行分析完成，论点健康度 82/100，无异常',
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString() // 6小时前
-  },
-  {
-    id: '5',
-    type: 'routine',
-    stockName: '系统',
-    stockSymbol: '',
-    message: '每日数据抓取完成，10个持仓数据已更新',
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString() // 8小时前
-  }
-]
-
 export default function AIFeedV2() {
+  const [feedItems, setFeedItems] = useState<AIFeedItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchAlerts()
+  }, [])
+
+  const fetchAlerts = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch('/api/alerts?limit=10')
+      if (!response.ok) throw new Error('获取提醒失败')
+      const data = await response.json()
+
+      if (data.success && data.data.alerts) {
+        // 将 alerts 转换为 AI 动态格式
+        const items: AIFeedItem[] = data.data.alerts.map((alert: AlertApiResponse) => {
+          let type: AIFeedItem['type'] = 'info'
+          if (alert.level === 'urgent') type = 'critical'
+          else if (alert.level === 'important' || alert.level === 'watch') type = 'warning'
+
+          return {
+            id: alert.id,
+            type,
+            stockName: alert.position?.assetName || '未知',
+            stockSymbol: alert.position?.symbol || '',
+            message: alert.summary || alert.title,
+            timestamp: alert.sentAt || alert.createdAt
+          }
+        })
+        setFeedItems(items)
+      } else {
+        setFeedItems([])
+      }
+    } catch (err) {
+      console.error('Failed to fetch alerts:', err)
+      setError(err instanceof Error ? err.message : '未知错误')
+      setFeedItems([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // 获取类型的样式
   const getTypeStyles = (type: AIFeedItem['type']) => {
     switch (type) {
@@ -118,7 +119,24 @@ export default function AIFeedV2() {
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
   }
 
-  const feedItems = mockFeedItems
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-500" />
+            AI 动态
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <span className="ml-2 text-muted-foreground">加载中...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <Card>
@@ -132,8 +150,14 @@ export default function AIFeedV2() {
         </Button>
       </CardHeader>
       <CardContent>
-        {feedItems.length === 0 ? (
-          // 无事件时显示持续监控状态
+        {error ? (
+          <div className="text-center py-6">
+            <p className="text-sm text-red-500">加载失败: {error}</p>
+            <Button variant="ghost" size="sm" onClick={fetchAlerts} className="mt-2">
+              重试
+            </Button>
+          </div>
+        ) : feedItems.length === 0 ? (
           <div className="text-center py-6">
             <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
             <p className="text-sm text-green-600 dark:text-green-400 font-medium">
@@ -149,10 +173,14 @@ export default function AIFeedV2() {
               const styles = getTypeStyles(item.type)
               const Icon = styles.icon
 
+              // 生成链接：直接链接到 alerts 列表页（包含该 alert 的详情）
+              const linkHref = `/alerts`
+
               return (
-                <div
+                <Link
                   key={item.id}
-                  className={`rounded-lg border-l-4 p-3 bg-slate-50/50 dark:bg-slate-900/50 ${styles.border} hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors`}
+                  href={linkHref}
+                  className={`block rounded-lg border-l-4 p-3 bg-slate-50/50 dark:bg-slate-900/50 ${styles.border} hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors`}
                 >
                   <div className="flex items-start gap-3">
                     {/* 彩色圆点 */}
@@ -184,7 +212,7 @@ export default function AIFeedV2() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               )
             })}
           </div>

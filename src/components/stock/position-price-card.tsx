@@ -18,6 +18,14 @@ interface StockQuote {
   amount: number
   market: string
   updateTime: string
+  // 增强字段
+  week52High?: number
+  week52Low?: number
+  marketCap?: number
+  pe?: number
+  dividend?: number
+  amplitude?: number
+  source?: string
 }
 
 interface PositionPriceCardProps {
@@ -213,39 +221,92 @@ export function PositionPriceCard({
 
             {/* 详细信息 */}
             {showDetails && (
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">成本价:</span>
-                  <span>¥{formatNumber(costPrice)}</span>
+              <div className="space-y-3 pt-3 border-t">
+                {/* 基础信息 */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">成本价:</span>
+                    <span>¥{formatNumber(costPrice)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">持仓数量:</span>
+                    <span>{quantity.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">持仓市值:</span>
+                    <span>¥{(quote.price * quantity).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">持仓成本:</span>
+                    <span>¥{(costPrice * quantity).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">持仓数量:</span>
-                  <span>{quantity.toLocaleString()}</span>
+
+                {/* 行情数据 */}
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">开盘:</span>
+                    <span>{formatNumber(quote.open)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">昨收:</span>
+                    <span>{formatNumber(quote.prevClose)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">最高:</span>
+                    <span className="text-red-500">{formatNumber(quote.high)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">最低:</span>
+                    <span className="text-green-500">{formatNumber(quote.low)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">成交量:</span>
+                    <span>{formatVolume(quote.volume)}</span>
+                  </div>
+                  {quote.amplitude && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">振幅:</span>
+                      <span>{quote.amplitude.toFixed(2)}%</span>
+                    </div>
+                  )}
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">持仓市值:</span>
-                  <span>¥{(quote.price * quantity).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">持仓成本:</span>
-                  <span>¥{(costPrice * quantity).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">开盘:</span>
-                  <span>{formatNumber(quote.open)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">昨收:</span>
-                  <span>{formatNumber(quote.prevClose)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">最高:</span>
-                  <span className="text-red-500">{formatNumber(quote.high)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">最低:</span>
-                  <span className="text-green-500">{formatNumber(quote.low)}</span>
-                </div>
+
+                {/* 增强数据 */}
+                {(quote.week52High || quote.marketCap || quote.pe) && (
+                  <div className="grid grid-cols-2 gap-3 text-sm pt-2 border-t">
+                    {quote.week52High && quote.week52Low && (
+                      <>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">52周高:</span>
+                          <span className="text-red-500">{formatNumber(quote.week52High)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">52周低:</span>
+                          <span className="text-green-500">{formatNumber(quote.week52Low)}</span>
+                        </div>
+                      </>
+                    )}
+                    {quote.marketCap && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">总市值:</span>
+                        <span>{quote.marketCap >= 100000000 ? (quote.marketCap / 100000000).toFixed(2) + '万亿' : (quote.marketCap / 100000000).toFixed(2) + '亿'}</span>
+                      </div>
+                    )}
+                    {quote.pe && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">市盈率:</span>
+                        <span>{quote.pe > 0 ? quote.pe.toFixed(2) : 'N/A'}</span>
+                      </div>
+                    )}
+                    {quote.dividend && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">股息率:</span>
+                        <span>{quote.dividend.toFixed(2)}%</span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 

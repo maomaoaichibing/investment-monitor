@@ -1,6 +1,9 @@
 /**
  * GET /api/stock/history/[symbol]?market=HK&period=daily&count=30
  * 获取股票历史K线数据
+ *
+ * 数据源: Yahoo Finance
+ * 注意: K线数据需要服务器能访问 Yahoo Finance
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -35,6 +38,7 @@ async function fetchKLineFromYahoo(symbol: string, market: string, count: number
     klines: KLine[]
   }
   error?: string
+  retryAfter?: number
 }> {
   try {
     const yahooSymbol = toYahooSymbol(symbol, market)
@@ -42,9 +46,20 @@ async function fetchKLineFromYahoo(symbol: string, market: string, count: number
 
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9',
       }
     })
+
+    // 如果被限流，返回retryAfter
+    if (response.status === 429) {
+      return {
+        success: false,
+        error: '请求过于频繁，请稍后重试',
+        retryAfter: 60 // 1分钟后重试
+      }
+    }
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`)
@@ -102,23 +117,45 @@ export async function GET(
 
     const cacheKey = `history:${makeCacheKey(symbol, market)}:${count}`
 
-    // 检查缓存
-    const cached = getCache<{ symbol: string; name: string; klines: KLine[] }>(cacheKey, 5 * 60 * 1000)
+    // 检查缓存 (30分钟缓存)
+    const cached = getCache<{ symbol: string; name: string; klines: KLine[] }>(cacheKey, 30 * 60 * 1000)
     if (cached) {
-      return NextResponse.json({ success: true, data: cached, source: 'cache' })
+      return NextResponse.json({
+        success: true,
+        data: cached,
+        source: 'cache',
+        cachedAt: new Date().toISOString()
+      })
     }
 
     // 获取数据
     const result = await fetchKLineFromYahoo(symbol, market, count)
 
     if (!result.success || !result.data) {
+      // 如果被限流，返回429状态码和retryAfter头
+      if (result.retryAfter) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: result.error,
+            retryAfter: result.retryAfter,
+            message: 'K线数据暂时不可用，请稍后重试或联系管理员配置备用数据源'
+          },
+          { status: 429 }
+        )
+      }
+
       return NextResponse.json(
-        { success: false, error: result.error },
+        {
+          success: false,
+          error: result.error,
+          message: 'K线数据暂时不可用。Yahoo Finance 在部分服务器上有限制访问，请联系管理员配置备用数据源（如腾讯财经、新浪财经）'
+        },
         { status: 500 }
       )
     }
 
-    // 缓存结果
+    // 缓存结果 (30分钟)
     setCache(cacheKey, result.data)
 
     return NextResponse.json({

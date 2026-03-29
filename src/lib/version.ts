@@ -18,9 +18,48 @@ export interface Version {
   commitId?: string
 }
 
-export const CURRENT_VERSION = 'v1.0.6'
+export const CURRENT_VERSION = 'v1.0.7'
 
 export const VERSION_HISTORY: Version[] = [
+  {
+    version: 'v1.0.7',
+    date: '2026-03-29',
+    title: '批量操作 & 健康度仪表盘 & 运维工具',
+    description: '新增批量重新生成Thesis、健康度分析页面、Dashboard快捷操作、运维脚本',
+    commitId: '2f78268',
+    features: [
+      {
+        title: '修复做空仓位Prompt',
+        description: '支持bearishSignal字段，SQQQ等做空产品正确生成看空逻辑',
+        status: 'fixed'
+      },
+      {
+        title: '批量重新生成Thesis',
+        description: '新增/api/theses/batch-regenerate API和/positions/batch-regenerate页面',
+        status: 'new'
+      },
+      {
+        title: '投资组合健康度仪表盘',
+        description: '新增/portfolios/[id]/health页面，环形进度显示总体健康度',
+        status: 'new'
+      },
+      {
+        title: 'Dashboard快捷操作',
+        description: '新增QuickActions组件，快捷入口：新建组合、批量重新生成、全部论题、全部提醒',
+        status: 'new'
+      },
+      {
+        title: '完善ESLint配置',
+        description: '添加.next/core-web-vitals配置，修复eslint-disable注释问题',
+        status: 'optimized'
+      },
+      {
+        title: '运维脚本集',
+        description: '新增api-test.sh(API测试)、backup-db.sh(数据库备份)、monitor.sh(服务监控)',
+        status: 'new'
+      }
+    ]
+  },
   {
     version: 'v1.0.6',
     date: '2026-03-28',

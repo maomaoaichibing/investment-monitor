@@ -1,5 +1,5 @@
 import { db } from '@/lib/db'
-import { 
+import {
   CreateAlertRequest,
   UpdateAlertRequest,
   UpdateAlertStatusRequest,
@@ -7,6 +7,7 @@ import {
   AlertApiResponse,
   alertApiResponseSchema,
 } from '@/lib/schemas/alertSchema'
+import { sendAlertNotifications } from './emailSubscriptionService'
 
 export interface AlertWithRelations {
   id: string

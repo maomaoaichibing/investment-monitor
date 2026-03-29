@@ -18,9 +18,38 @@ export interface Version {
   commitId?: string
 }
 
-export const CURRENT_VERSION = 'v1.0.9'
+export const CURRENT_VERSION = 'v1.0.10'
 
 export const VERSION_HISTORY: Version[] = [
+  {
+    version: 'v1.0.10',
+    date: '2026-03-29',
+    title: 'K线图表交互增强',
+    description: '时间周期选择、MA均线指标、Hover数据提示、成交量柱状图',
+    commitId: '6c9f765',
+    features: [
+      {
+        title: 'K线周期选择',
+        description: '日K/周K/月K切换按钮，响应式设计',
+        status: 'new'
+      },
+      {
+        title: 'MA均线指标',
+        description: 'MA5(黄)、MA10(紫)、MA20(青)三条均线叠加显示',
+        status: 'new'
+      },
+      {
+        title: 'Hover数据提示',
+        description: '鼠标悬停显示OHLCV完整数据',
+        status: 'new'
+      },
+      {
+        title: '成交量柱状图',
+        description: 'K线下方显示成交量柱状图和均量线',
+        status: 'new'
+      }
+    ]
+  },
   {
     version: 'v1.0.9',
     date: '2026-03-29',

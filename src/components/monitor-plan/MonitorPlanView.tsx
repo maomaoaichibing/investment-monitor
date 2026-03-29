@@ -367,7 +367,6 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
         {!hasMonitorPlan ? (
           <Button 
             onClick={handleGenerateMonitorPlan} 
-            disabled={generating || loading}
             className="gap-2"
           >
             {generating ? (
@@ -452,7 +451,6 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
               </p>
               <Button 
                 onClick={handleGenerateMonitorPlan} 
-                disabled={generating}
                 size="lg"
                 className="gap-2"
               >

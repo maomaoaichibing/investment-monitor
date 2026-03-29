@@ -77,6 +77,7 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
 
   // 生成监控计划（幂等）
   const handleGenerateMonitorPlan = async () => {
+    console.log('[MonitorPlan] Starting to generate monitor plan for thesis:', thesisId)
     setGenerating(true)
     setActionStatus('generating')
     setError(null)
@@ -90,22 +91,27 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
         body: JSON.stringify({ thesisId }),
       })
       
+      console.log('[MonitorPlan] Response status:', response.status)
       const data = await response.json()
+      console.log('[MonitorPlan] Response data:', data)
       
       if (data.success) {
         // 使用API返回的统一结构化数据
         setMonitorPlan(data.data.monitorPlan)
         setActionStatus('success')
+        console.log('[MonitorPlan] Monitor plan generated successfully')
         
         // 3秒后重置状态
         setTimeout(() => setActionStatus('idle'), 3000)
       } else {
-        setError(data.error || '生成失败')
+        const errorMsg = data.error || '生成失败'
+        console.error('[MonitorPlan] Generate failed:', errorMsg)
+        setError(errorMsg)
         setActionStatus('error')
       }
     } catch (error: any) {
-      console.error('Failed to generate monitor plan:', error)
-      setError('生成监控计划失败')
+      console.error('[MonitorPlan] Exception during generate:', error)
+      setError('生成监控计划失败: ' + (error.message || '网络错误'))
       setActionStatus('error')
     } finally {
       setGenerating(false)

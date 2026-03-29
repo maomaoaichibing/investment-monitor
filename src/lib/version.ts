@@ -18,9 +18,38 @@ export interface Version {
   commitId?: string
 }
 
-export const CURRENT_VERSION = 'v1.0.7'
+export const CURRENT_VERSION = 'v1.0.8'
 
 export const VERSION_HISTORY: Version[] = [
+  {
+    version: 'v1.0.8',
+    date: '2026-03-29',
+    title: 'Dashboard增强 & 邮件通知 & 数据库同步',
+    description: '收益分析组件、邮件设置页面、数据库同步脚本',
+    commitId: 'cd107ea',
+    features: [
+      {
+        title: 'Dashboard收益分析组件',
+        description: '新增PortfolioAnalytics组件，展示总市值、总成本、盈亏统计',
+        status: 'new'
+      },
+      {
+        title: '邮件通知设置页面',
+        description: '新增/settings/email页面，配置邮件发送设置和测试功能',
+        status: 'new'
+      },
+      {
+        title: '数据库同步脚本',
+        description: '新增sync-db-to-local.sh和sync-db-to-server.sh，支持本地与服务器数据库同步',
+        status: 'new'
+      },
+      {
+        title: 'Settings路由',
+        description: '新增Settings页面布局，支持邮件设置等配置功能',
+        status: 'new'
+      }
+    ]
+  },
   {
     version: 'v1.0.7',
     date: '2026-03-29',

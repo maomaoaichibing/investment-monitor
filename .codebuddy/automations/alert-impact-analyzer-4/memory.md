@@ -89,3 +89,40 @@
 - 执行影响分析: 0
 
 **备注**: Alert 表为空。远程服务器 (62.234.79.188:4000) 确认无 alerts 数据。
+
+---
+
+## 2026-03-28 (23:23) - API 端点缺失
+
+**状态**: ⚠️ 需要创建 API 端点
+
+**结果**:
+- 未读 alerts (unread&important): 1 (美光科技 MU)
+- 未读 alerts (unread&urgent): 1 (蔚来 NIO)
+- 执行影响分析: 0 (API 端点不存在)
+
+**问题**:
+- `/api/alerts/[id]/analyze` 端点不存在
+- `analyzeAlertImpact` 方法在 llmService.ts 中但未暴露为 API
+- 远程服务器有 2 个未读 high/medium 级别 alerts 待分析
+
+---
+
+## 2026-03-29 (06:48) - API 端点缺失
+
+**状态**: ⚠️ 仍需创建 API 端点
+
+**结果**:
+- 远程服务器(62.234.79.188:4000):
+  - 未读 important alerts: 1 (美光科技 MU - cmna1ysj6000713t8xbbjodxg)
+  - 未读 urgent alerts: 1 (蔚来 NIO - cmna1yllj000313t8252w2mdx)
+- analyze API 调用: 返回404（端点不存在）
+
+**问题**:
+- `/api/alerts/[id]/analyze` 端点仍未创建
+- 本地数据库 Alert 表为空
+- 远程服务器有 2 个未读 alerts 待分析
+
+**下一步**:
+- 创建 `/api/alerts/[id]/analyze` API 路由
+- 将 `llmService.analyzeAlertImpact` 方法暴露为 HTTP API

@@ -90,9 +90,9 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
   return (
     <div className="container mx-auto px-4 py-8">
       {/* 头部导航 */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" asChild>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex flex-col gap-4">
+          <Button variant="outline" size="sm" asChild className="self-start">
             <Link href={`/portfolios/${position.portfolio.id}`}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               返回组合
@@ -100,32 +100,32 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
           </Button>
 
           <div>
-            <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <TrendingUp className="h-8 w-8 text-primary" />
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
               {position.assetName}
             </h1>
-            <div className="flex items-center gap-3 mt-2 text-muted-foreground">
-              <Badge variant="outline" className="text-base px-3 py-1">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-2 text-muted-foreground">
+              <Badge variant="outline" className="text-sm px-2 sm:px-3 py-1">
                 {position.symbol}
               </Badge>
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-sm">
                 {marketLabels[position.market] || position.market}
               </Badge>
-              <Badge variant="outline">
+              <Badge variant="outline" className="text-sm">
                 {holdingStyleLabels[position.holdingStyle] || position.holdingStyle}
               </Badge>
             </div>
           </div>
         </div>
 
-        <div className="flex gap-3">
-          <Button variant="outline" asChild>
+        <div className="flex gap-2 sm:gap-3">
+          <Button variant="outline" size="sm" asChild>
             <Link href={`/portfolios/${position.portfolio.id}/positions/${position.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
               编辑
             </Link>
           </Button>
-          <Button variant="outline" className="text-red-600 hover:text-red-700 hover:border-red-300">
+          <Button variant="outline" size="sm" className="text-red-600 hover:text-red-700 hover:border-red-300">
             <Trash2 className="mr-2 h-4 w-4" />
             删除
           </Button>
@@ -133,7 +133,7 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
       </div>
 
       {/* 基本信息卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -285,8 +285,8 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
             <CardDescription>与该持仓相关的活动统计</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-accent/50 rounded-lg">
+            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+              <div className="text-center p-2 sm:p-4 bg-accent/50 rounded-lg">
                 <div className="text-3xl font-bold text-primary">
                   {position._count.thesis}
                 </div>

@@ -84,18 +84,18 @@ export default async function PortfoliosPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* 页面头部 */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-            <PortfolioIcon className="h-8 w-8 text-primary" />
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
+            <PortfolioIcon className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
             投资组合
           </h1>
-          <p className="text-muted-foreground mt-2">
+          <p className="text-muted-foreground mt-2 text-sm sm:text-base">
             管理和监控您的所有投资组合
           </p>
         </div>
         <Link href="/portfolios/new">
-          <Button>
+          <Button size="sm" className="w-full sm:w-auto">
             <Plus className="h-4 w-4 mr-2" />
             新建组合
           </Button>
@@ -205,7 +205,7 @@ export default async function PortfoliosPage() {
 
                 <CardContent>
                   {/* 统计行 */}
-                  <div className="grid grid-cols-4 gap-4 mb-4 py-3 border-y">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 py-3 border-y">
                     <div>
                       <div className="text-2xl font-bold">{portfolio._count.positions}</div>
                       <div className="text-xs text-muted-foreground">持仓数</div>

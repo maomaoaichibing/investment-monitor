@@ -73,18 +73,18 @@ export default async function HomePage() {
   ]
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8 flex items-center justify-between">
+    <div className="container mx-auto px-4 py-4 sm:py-8">
+      <div className="mb-6 sm:mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">仪表盘</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">仪表盘</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
             监控您的投资逻辑，接收智能提醒
           </p>
         </div>
-        <VersionBadge className="text-sm" />
+        <VersionBadge className="text-sm self-start sm:self-auto" />
       </div>
 
-      <div className="grid gap-6">
+      <div className="grid gap-4 sm:gap-6">
         {/* 快捷操作 */}
         <QuickActions />
 
@@ -109,13 +109,13 @@ export default async function HomePage() {
         />
 
         {/* 主要内容区：AI动态 | 论题卡片 */}
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
           <AIFeedV2 />
           <ThesisCardV2 />
         </div>
 
         {/* 第二行：组合概览 + 即将到来的事件 */}
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <PortfolioOverviewV2 />
           </div>

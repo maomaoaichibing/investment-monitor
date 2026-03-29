@@ -168,7 +168,6 @@ function StepItem({ step, isLast, variant }: StepItemProps) {
                 </div>
               ) : step.result ? (
                 <div className="text-sm text-foreground/80">
-                  {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
                   {(step.result as any)}
                 </div>
               ) : null}

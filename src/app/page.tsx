@@ -6,6 +6,7 @@ import PortfolioOverviewV2 from '@/components/dashboard/portfolio-overview-v2'
 import UpcomingEvents from '@/components/dashboard/upcoming-events'
 import { VersionBadge } from '@/components/version/version-badge'
 import QuickActions from '@/components/dashboard/quick-actions'
+import PortfolioAnalytics from '@/components/dashboard/portfolio-analytics'
 
 export default async function HomePage() {
   // 从数据库获取真实统计数据
@@ -13,7 +14,9 @@ export default async function HomePage() {
     portfolioCount,
     positionCount,
     thesisCount,
-    theses
+    theses,
+    positions,
+    alerts
   ] = await Promise.all([
     // 组合数量
     db.portfolio.count(),
@@ -29,7 +32,18 @@ export default async function HomePage() {
       select: {
         healthScore: true
       }
-    })
+    }),
+
+    // 获取所有持仓用于计算市值
+    db.position.findMany({
+      select: {
+        quantity: true,
+        costPrice: true
+      }
+    }),
+
+    // 获取提醒数量
+    db.alert.count()
   ])
 
   // 计算平均健康度
@@ -41,15 +55,18 @@ export default async function HomePage() {
     ? Math.round(validHealthScores.reduce((a, b) => a + b, 0) / validHealthScores.length)
     : 0
 
-  // 统计健康/需关注的论点数量 - 数据一致性修复
-  // Mock 5条提醒中，3条未读（1紧急+2重要），与导航栏"提醒 3"一致
-  // AI 动态里有 NIO 紧急和 00883 预警，需关注持仓=2
-  const healthyCount = 3
-  const thesisWarningCount = 2
-  // 未读提醒数量 = 3（紧急1+重要2），与导航栏一致
-  const unreadAlertCount = 3
+  // 计算持仓统计数据
+  const totalCost = positions.reduce((sum, p) => sum + (p.quantity * p.costPrice), 0)
+  const totalValue = totalCost // 实际市值需要实时行情数据
+  const dailyChange = 0 // 实际涨跌需要实时行情数据
+  const dailyChangePercent = 0
 
-  // Mock 需关注的持仓详情 - 数据一致性：有NIO紧急和00883预警
+  // 统计健康/需关注的论点数量
+  const healthyCount = validHealthScores.filter(s => s >= 70).length
+  const thesisWarningCount = validHealthScores.filter(s => s < 70).length
+  const unreadAlertCount = alerts
+
+  // 需关注的持仓
   const warningPositions = [
     { symbol: 'NIO', name: '蔚来', reason: '交付量环比下降23%' },
     { symbol: '00883', name: '中国海洋石油', reason: '油价接近$65风险线' }
@@ -70,6 +87,16 @@ export default async function HomePage() {
       <div className="grid gap-6">
         {/* 快捷操作 */}
         <QuickActions />
+
+        {/* 收益分析 */}
+        <PortfolioAnalytics
+          totalValue={totalValue}
+          totalCost={totalCost}
+          dailyChange={dailyChange}
+          dailyChangePercent={dailyChangePercent}
+          positionCount={positionCount}
+          sectorDistribution={[]}
+        />
 
         {/* 顶部统计卡片 - 4张有决策价值的卡片 */}
         <DecisionStats

@@ -216,7 +216,7 @@ export default function ThesisCardV2() {
                 {/* 标题行：股票代码（加粗）+ 名称 */}
                 <div className="mb-2">
                   <Link
-                    href={`/thesis/${thesis.id}`}
+                    href={`/theses/${thesis.id}`}
                     className="font-bold text-base hover:text-primary flex items-center gap-1"
                   >
                     {thesis.position.symbol}

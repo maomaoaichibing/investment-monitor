@@ -375,7 +375,7 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
                       </span>
                     </div>
                     <Button variant="ghost" size="sm" asChild>
-                      <Link href={`/thesis/${thesis.id}`}>
+                      <Link href={`/theses/${thesis.id}`}>
                         <Eye className="h-4 w-4 mr-1" />
                         查看详情
                       </Link>

@@ -123,8 +123,15 @@ function MobileMenu({ unreadAlertCount }: { unreadAlertCount: number }) {
 
       {/* 移动端菜单 */}
       {isOpen && (
-        <div className="fixed inset-0 top-14 z-50 bg-background border-t md:hidden">
-          <nav className="container py-4 flex flex-col gap-2">
+        <>
+          {/* 背景遮罩 - 点击关闭 */}
+          <div
+            className="fixed inset-0 top-14 z-40 bg-black/50 md:hidden"
+            onClick={() => setIsOpen(false)}
+          />
+          {/* 菜单内容 */}
+          <div className="fixed inset-x-0 top-14 z-50 bg-background border-t md:hidden">
+            <nav className="container py-4 flex flex-col gap-2">
             {navItems.map((item) => (
               <Link
                 key={item.href}
@@ -155,7 +162,8 @@ function MobileMenu({ unreadAlertCount }: { unreadAlertCount: number }) {
               </Link>
             </div>
           </nav>
-        </div>
+          </div>
+        </>
       )}
     </>
   )

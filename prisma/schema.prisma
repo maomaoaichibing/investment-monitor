@@ -141,3 +141,13 @@ model Alert {
   event             Event?   @relation(fields: [eventId], references: [id])
   eventAnalysis     EventAnalysis? @relation(fields: [eventAnalysisId], references: [id])
 }
+
+model EmailSubscription {
+  id          String   @id @default(cuid())
+  email       String
+  alertLevel  String   @default("important") // info / watch / important / urgent
+  positionId  String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -52,26 +52,42 @@ export async function POST(
     }
 
     // 4. 解析 thesis 数据，提取 analyzeAlertImpact 所需的参数
-    let thesisData: any
+    // 数据库中的字段可能是 pillarsJson（字符串）或 pillars（数组）
+    let pillars: any[] = []
     try {
-      thesisData = typeof thesis.thesisData === 'string' 
-        ? JSON.parse(thesis.thesisData) 
-        : thesis.thesisData
+      if (thesis.pillarsJson) {
+        pillars = typeof thesis.pillarsJson === 'string'
+          ? JSON.parse(thesis.pillarsJson)
+          : thesis.pillarsJson
+      } else if ((thesis as any).pillars) {
+        pillars = (thesis as any).pillars
+      }
     } catch {
-      thesisData = thesis.thesisData || {}
+      pillars = []
     }
 
-    // 获取第一个 Pillar（如果有）
-    const pillars = thesisData.pillars || []
-    const primaryPillar = pillars[0] || {}
+    // 获取核心论题作为备选
+    let coreThesis: any[] = []
+    try {
+      if (thesis.coreThesisJson) {
+        coreThesis = typeof thesis.coreThesisJson === 'string'
+          ? JSON.parse(thesis.coreThesisJson)
+          : thesis.coreThesisJson
+      }
+    } catch {
+      coreThesis = []
+    }
+
+    // 获取第一个 Pillar（优先使用 pillars，其次 coreThesis）
+    const primaryPillar = pillars[0] || coreThesis[0] || {}
 
     // 5. 构建影响分析参数
     const impactParams = {
       stockCode: position.symbol,
       stockName: position.assetName,
       direction: thesis.direction || '做多',
-      thesisSummary: thesisData.thesisSummary || thesis.summary || '暂无投资逻辑摘要',
-      currentHealthScore: thesisData.overallHealthScore || thesis.healthScore || 80,
+      thesisSummary: thesis.summary || '暂无投资逻辑摘要',
+      currentHealthScore: thesis.healthScore || 80,
       pillarName: primaryPillar.name || '核心议题',
       coreAssumption: primaryPillar.coreAssumption || '暂无核心假设',
       bullishSignal: primaryPillar.bullishSignal || '暂无看多信号',

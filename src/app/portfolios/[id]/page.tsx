@@ -117,6 +117,12 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
 
         <div className="flex gap-3">
           <Button variant="outline" asChild>
+            <Link href={`/portfolios/${params.id}/health`}>
+              <TrendingUp className="mr-2 h-4 w-4" />
+              健康度
+            </Link>
+          </Button>
+          <Button variant="outline" asChild>
             <Link href="/portfolios">
               ← 返回列表
             </Link>

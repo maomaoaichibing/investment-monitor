@@ -148,7 +148,7 @@ export default function ThesisCard() {
             暂无投资论题
           </div>
           <Button variant="outline" size="sm" asChild className="w-full">
-            <Link href="/thesis/generate">生成论题</Link>
+            <Link href="/positions/batch-regenerate">生成论题</Link>
           </Button>
         </CardContent>
       </Card>

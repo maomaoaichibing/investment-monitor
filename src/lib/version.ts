@@ -18,9 +18,53 @@ export interface Version {
   commitId?: string
 }
 
-export const CURRENT_VERSION = 'v1.0.8'
+export const CURRENT_VERSION = 'v1.0.9'
 
 export const VERSION_HISTORY: Version[] = [
+  {
+    version: 'v1.0.9',
+    date: '2026-03-29',
+    title: 'K线功能 & 移动端适配',
+    description: '多数据源K线服务、K线图表组件、移动端响应式优化',
+    commitId: '455bae0',
+    features: [
+      {
+        title: '多数据源K线服务',
+        description: 'klineService支持腾讯财经→新浪财经→Yahoo Finance自动容灾，30分钟缓存',
+        status: 'new'
+      },
+      {
+        title: 'K线API接口',
+        description: 'GET /api/stock/history/[symbol]，支持港股/A股/美股，返回日K数据',
+        status: 'new'
+      },
+      {
+        title: 'K线图表组件',
+        description: 'KLineChart组件，SVG渲染30日K线，显示最新价/涨跌幅/最高/最低',
+        status: 'new'
+      },
+      {
+        title: '持仓详情页K线集成',
+        description: '在持仓详情页实时行情下方显示K线图表',
+        status: 'new'
+      },
+      {
+        title: '邮件订阅管理API',
+        description: 'GET/POST/DELETE /api/email/subscriptions，支持邮件订阅管理',
+        status: 'new'
+      },
+      {
+        title: '移动端导航优化',
+        description: 'SiteHeader新增汉堡菜单，移动端全屏覆盖导航',
+        status: 'improved'
+      },
+      {
+        title: '移动端页面适配',
+        description: 'Portfolio列表、Position详情、Dashboard间距响应式优化',
+        status: 'improved'
+      }
+    ]
+  },
   {
     version: 'v1.0.8',
     date: '2026-03-29',

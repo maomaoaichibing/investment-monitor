@@ -5,6 +5,7 @@ import ThesisCardV2 from '@/components/dashboard/thesis-card-v2'
 import PortfolioOverviewV2 from '@/components/dashboard/portfolio-overview-v2'
 import UpcomingEvents from '@/components/dashboard/upcoming-events'
 import { VersionBadge } from '@/components/version/version-badge'
+import QuickActions from '@/components/dashboard/quick-actions'
 
 export default async function HomePage() {
   // 从数据库获取真实统计数据
@@ -67,6 +68,9 @@ export default async function HomePage() {
       </div>
 
       <div className="grid gap-6">
+        {/* 快捷操作 */}
+        <QuickActions />
+
         {/* 顶部统计卡片 - 4张有决策价值的卡片 */}
         <DecisionStats
           portfolioCount={portfolioCount}

@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { PositionPriceCard } from '@/components/stock/position-price-card'
+import { KLineChart } from '@/components/stock/kline-chart'
 import { RegenerateThesisButton } from '@/components/thesis/regenerate-thesis-button'
 
 interface PositionDetailPageProps {
@@ -211,6 +212,16 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
           showDetails={true}
           autoRefresh={true}
           refreshInterval={60}
+        />
+      </div>
+
+      {/* K线图表 */}
+      <div className="mb-6">
+        <KLineChart
+          symbol={position.symbol}
+          name={position.assetName}
+          market={position.market}
+          count={30}
         />
       </div>
 

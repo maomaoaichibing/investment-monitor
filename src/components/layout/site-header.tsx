@@ -1,7 +1,10 @@
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Bell, Home, Briefcase, AlertTriangle, BarChart, Settings, TestTube, History } from 'lucide-react'
+import {
+  Bell, Home, Briefcase, AlertTriangle, BarChart, Settings, TestTube,
+  History, Mail
+} from 'lucide-react'
 import { db } from '@/lib/db'
 import { VersionBadge } from '@/components/version/version-badge'
 
@@ -73,8 +76,12 @@ export async function SiteHeader() {
             )}
           </Button>
 
-          <Button variant="ghost" size="icon">
-            <Settings className="h-5 w-5" />
+          {/* 设置按钮 */}
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/settings/email" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              邮件
+            </Link>
           </Button>
 
           <Button variant="default" asChild>

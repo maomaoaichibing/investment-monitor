@@ -172,3 +172,28 @@
 2. 蔚来 (NIO):
    - impactDirection: bearish, impactScore: 7
    - assumptionStatus: weakened, newHealthScore: 65 (-15)
+
+---
+
+## 2026-03-29 (21:44) - 2个alerts分析完成
+
+**状态**: ✅ 成功完成
+
+**结果**:
+- 未读 important alerts: 1 (美光科技 MU - cmna1ysj6000713t8xbbjodxg)
+- 未读 urgent alerts: 1 (蔚来 NIO - cmna1yllj000313t8252w2mdx)
+- 执行影响分析: 2
+
+**分析结果**:
+
+1. **美光科技 (MU)**:
+   - impactDirection: neutral, impactScore: 3
+   - assumptionStatus: intact, newHealthScore: 65 (-15)
+
+2. **蔚来 (NIO)**:
+   - impactDirection: bearish, impactScore: 7
+   - assumptionStatus: weakened, newHealthScore: 65 (-17)
+
+**备注**:
+- 本地服务 (localhost:4000) 未启动，使用远程服务器 (62.234.79.188:4000)
+- API 端点 `/api/alerts/[id]/analyze` 工作正常

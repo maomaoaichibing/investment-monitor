@@ -43,6 +43,17 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
 
   // 检查是否有monitor plan - 使用统一的API响应结构
   const hasMonitorPlan = monitorPlan && monitorPlan.id
+  
+  // 调试信息
+  console.log('[MonitorPlan] Debug info:', {
+    thesisId,
+    monitorPlan,
+    hasMonitorPlan,
+    monitorPlanId: monitorPlan?.id,
+    loading,
+    generating,
+    actionStatus
+  })
 
   // 获取监控计划详情
   const fetchMonitorPlan = async () => {
@@ -77,12 +88,21 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
 
   // 生成监控计划（幂等）
   const handleGenerateMonitorPlan = async () => {
-    console.log('[MonitorPlan] Starting to generate monitor plan for thesis:', thesisId)
+    console.log('[MonitorPlan] handleGenerateMonitorPlan called for thesis:', thesisId)
+    console.log('[MonitorPlan] Current monitorPlan:', monitorPlan)
+    console.log('[MonitorPlan] Current hasMonitorPlan:', hasMonitorPlan)
+    
+    if (hasMonitorPlan) {
+      console.log('[MonitorPlan] Already has monitor plan, returning...')
+      return
+    }
+    
     setGenerating(true)
     setActionStatus('generating')
     setError(null)
     
     try {
+      console.log('[MonitorPlan] Sending POST request to /api/monitor-plan/generate')
       const response = await fetch('/api/monitor-plan/generate', {
         method: 'POST',
         headers: {
@@ -99,7 +119,7 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
         // 使用API返回的统一结构化数据
         setMonitorPlan(data.data.monitorPlan)
         setActionStatus('success')
-        console.log('[MonitorPlan] Monitor plan generated successfully')
+        console.log('[MonitorPlan] Monitor plan generated successfully:', data.data.monitorPlan)
         
         // 3秒后重置状态
         setTimeout(() => setActionStatus('idle'), 3000)

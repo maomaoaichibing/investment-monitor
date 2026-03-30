@@ -57,24 +57,31 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
 
   // 获取监控计划详情
   const fetchMonitorPlan = async () => {
+    console.log('[MonitorPlan] fetchMonitorPlan called for thesisId:', thesisId)
     setLoading(true)
     setError(null)
     
     try {
-      const response = await fetch(`/api/monitor-plan?thesisId=${thesisId}`)
+      const url = `/api/monitor-plan?thesisId=${thesisId}`
+      console.log('[MonitorPlan] Fetching from:', url)
+      const response = await fetch(url)
+      console.log('[MonitorPlan] Response status:', response.status)
       const data = await response.json()
+      console.log('[MonitorPlan] Response data:', data)
       
       if (data.success) {
         // 直接使用API返回的结构化数据
+        console.log('[MonitorPlan] Setting monitorPlan:', data.data.monitorPlan)
         setMonitorPlan(data.data.monitorPlan)
       } else {
+        console.log('[MonitorPlan] No monitor plan found')
         setMonitorPlan(null)
         if (data.error) {
           setError(data.error)
         }
       }
     } catch (error: any) {
-      console.error('Failed to fetch monitor plan:', error)
+      console.error('[MonitorPlan] Failed to fetch monitor plan:', error)
       setError('获取监控计划失败')
     } finally {
       setLoading(false)

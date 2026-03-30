@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -55,8 +55,8 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
     actionStatus
   })
 
-  // 获取监控计划详情
-  const fetchMonitorPlan = async () => {
+  // 获取监控计划详情 - 使用useCallback避免无限重渲染
+  const fetchMonitorPlan = useCallback(async () => {
     console.log('[MonitorPlan] fetchMonitorPlan called for thesisId:', thesisId)
     setLoading(true)
     setError(null)
@@ -86,12 +86,13 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
     } finally {
       setLoading(false)
     }
-  }
+  }, [thesisId])
 
   // 页面加载时获取最新数据
   useEffect(() => {
+    console.log('[MonitorPlan] useEffect triggered, thesisId:', thesisId)
     fetchMonitorPlan()
-  }, [thesisId])
+  }, [thesisId, fetchMonitorPlan])
 
   // 生成监控计划（幂等）
   const handleGenerateMonitorPlan = async () => {

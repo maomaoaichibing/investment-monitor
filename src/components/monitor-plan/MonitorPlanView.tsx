@@ -41,14 +41,11 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
   const [isEditing, setIsEditing] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
 
-  // 检查是否有monitor plan - 使用统一的API响应结构
-  const hasMonitorPlan = monitorPlan && monitorPlan.id
-  
   // 调试信息
   console.log('[MonitorPlan] Debug info:', {
     thesisId,
     monitorPlan,
-    hasMonitorPlan,
+    hasMonitorPlan: monitorPlan && monitorPlan.id,
     monitorPlanId: monitorPlan?.id,
     loading,
     generating,
@@ -98,9 +95,9 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
   const handleGenerateMonitorPlan = async () => {
     console.log('[MonitorPlan] handleGenerateMonitorPlan called for thesis:', thesisId)
     console.log('[MonitorPlan] Current monitorPlan:', monitorPlan)
-    console.log('[MonitorPlan] Current hasMonitorPlan:', hasMonitorPlan)
+    console.log('[MonitorPlan] Current monitorPlan.id:', monitorPlan?.id)
     
-    if (hasMonitorPlan) {
+    if (monitorPlan && monitorPlan.id) {
       console.log('[MonitorPlan] Already has monitor plan, returning...')
       return
     }
@@ -385,14 +382,14 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
             <h2 className="text-2xl font-bold">{monitorPlan?.title || '监控计划'}</h2>
           </div>
           
-          {hasMonitorPlan && monitorPlan?.status && (
+          {monitorPlan?.id && monitorPlan?.status && (
             <div className="ml-2">
               {getStatusBadge(monitorPlan.status)}
             </div>
           )}
         </div>
         
-        {!hasMonitorPlan ? (
+        {!monitorPlan?.id ? (
           <Button 
             onClick={handleGenerateMonitorPlan} 
             className="gap-2"
@@ -468,7 +465,7 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
       )}
 
       {/* 如果没有监控计划 */}
-      {!hasMonitorPlan && !loading && (
+      {!monitorPlan?.id && !loading && (
         <Card className="border-dashed">
           <CardContent className="pt-6">
             <div className="text-center py-8">
@@ -512,7 +509,7 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
       )}
 
       {/* 监控计划内容 */}
-      {hasMonitorPlan && (
+      {monitorPlan?.id && (
         <div className="space-y-6">
           {/* Watch Items (监控项) */}
           {monitorPlan.watchItems && monitorPlan.watchItems.length > 0 && (

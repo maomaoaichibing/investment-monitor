@@ -4,7 +4,15 @@
 
 | 时间 | 结果 | 说明 |
 |------|------|------|
-| 2026-03-30 09:22 | ✅ 分析2条 | 4条未读中筛选 important(美光科技 neutral,4分) + urgent(蔚来 bearish,7分) 各1条，健康度分别下降15分和17分 |
+| 2026-04-01 12:39 | ✅ 分析2条 | 美光科技important neutral(5分)健康度降15分至65，蔚来urgent bearish(7分)健康度降15分至65 |
+| 2026-04-01 07:41 | ✅ 分析2条 | 美光科技important neutral(5分)健康度降17分至65，蔚来urgent bearish(7分)健康度降17分至65 |
+| 2026-03-31 22:02 | ✅ 分析2条 | 美光科技important neutral(3分)健康度降15分至65，蔚来urgent bearish(7分)健康度降15分至65 |
+| 2026-03-31 07:58 | ✅ 分析2条 | 美光科技important neutral(4分)健康度降15分至65，蔚来urgent bearish(7分)健康度降17分至65 |
+| 2026-03-31 02:05 | ✅ 分析2条 | 美光科技important neutral(4分)健康度降15分至65，蔚来urgent bearish(7分)健康度降17分至65 |
+| 2026-03-30 23:46 | ✅ 分析2条 | 美光科技important neutral(3分)健康度降5分至75，蔚来urgent bearish(7分)健康度降17分至65 |
+| 2026-03-30 21:44 | ✅ 分析2条 | 美光科技important neutral(5分)健康度降17分至65，蔚来urgent bearish(7分)健康度降17分至65 |
+| 2026-03-30 19:38 | ✅ 分析2条 | 美光科技important neutral(5分)健康度降15分至65，蔚来urgent bearish(7分)健康度降17分至65 |
+| 2026-03-30 15:03 | ✅ 分析2条 | 美光科技important neutral(3分)健康度降15分至65，蔚来urgent bearish(7分)健康度降17分至65 |
 | 2026-03-29 23:46 | ✅ 分析2条 | 发现2条未读 alerts（美光科技important、蔚来urgent），成功进行影响分析并记录日记 |
 | 2026-03-29 15:21 | ✅ 无操作 | 未读 alerts 为0条，Alert表为空 |
 | 2026-03-29 11:02 | ✅ 无操作 | Alert 表为空（0条），无未读高级别 alerts |

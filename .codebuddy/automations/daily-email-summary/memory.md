@@ -1,5 +1,34 @@
 # Daily Email Summary Automation - 执行记录
 
+## 2026-03-31 执行记录
+
+**执行状态**: ✅ 成功
+
+**执行步骤**:
+1. 调用 GET /api/portfolios → 获取1个组合
+2. 调用 GET /api/positions → 获取10个持仓
+3. 调用 GET /api/alerts?status=unread&limit=5 → 获取4条未读提醒
+4. 组装数据调用 POST /api/email/daily-summary → 邮件发送成功
+
+**邮件发送结果**:
+- MessageId: <487414a7-ae31-d5ef-f31a-19e7385c9ed3@qq.com>
+- 收件人: 275755135@qq.com
+- 状态: accepted
+
+**数据概览**:
+- 投资组合: 1个 (富途牛牛)
+- 持仓数量: 10个
+- 活跃提醒: 4条
+  - 🔴 蔚来(urgent): 交付量预警
+  - 🟠 美光科技(important): 库存周期
+  - 🟡 中国海洋石油(watch): 油价风险
+  - 🔵 腾讯控股(info): 例行监控
+- 平均健康度: 76分
+
+**备注**:
+- Dashboard API (/api/dashboard) 返回404，改为直接调用 portfolios 和 positions API
+- API参数需使用 totalPortfolios/totalPositions/activeAlerts/avgHealthScore 格式
+
 ## 2026-03-30 执行记录
 
 **执行状态**: ✅ 成功

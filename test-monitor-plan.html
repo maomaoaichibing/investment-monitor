@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>监控计划测试页面</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 40px; max-width: 1200px; margin: 0 auto; }
+        .test-section { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 8px; }
+        .pass { color: #22c55e; font-weight: bold; }
+        .fail { color: #ef4444; font-weight: bold; }
+        .info { color: #3b82f6; }
+        code { background: #e5e7eb; padding: 2px 6px; border-radius: 3px; font-family: 'Monaco', 'Menlo', monospace; }
+        a { color: #3b82f6; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 10px 5px; }
+        button:hover { background: #2563eb; }
+        .log { background: #1e293b; color: #e2e8f0; padding: 15px; border-radius: 6px; font-family: 'Monaco', 'Menlo', monospace; font-size: 13px; overflow-x: auto; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>🎯 监控计划功能测试</h1>
+    
+    <div class="test-section">
+        <h2>1. 服务器状态测试</h2>
+        <p id="server-status">⏳ 正在测试...</p>
+    </div>
+
+    <div class="test-section">
+        <h2>2. API 测试</h2>
+        <p id="api-status">⏳ 正在测试监控计划 API...</p>
+        <pre id="api-response" class="log" style="display:none"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>3. 页面访问</h2>
+        <p>请在新标签页打开以下链接：</p>
+        <a href="http://localhost:4001/theses/cmn9v1tns0003pilmb9xu3q5q" target="_blank">
+            <button>📊 打开监控计划页面</button>
+        </a>
+        <p style="margin-top: 15px; color: #666; font-size: 14px;">
+            💡 提示：打开后按 F12 打开开发者工具，查看 Console 和 Network 标签页
+        </p>
+    </div>
+
+    <div class="test-section">
+        <h2>4. 调试指南</h2>
+        <p>在监控计划页面中，打开 Console 并执行：</p>
+        <pre class="log">
+// 检查监控计划数据
+fetch('/api/monitor-plan?thesisId=cmn9v1tns0003pilmb9xu3q5q')
+  .then(r => r.json())
+  .then(data => console.log('监控计划数据:', JSON.stringify(data, null, 2)))
+  .catch(e => console.error('错误:', e));
+
+// 检查组件状态
+console.log('监控计划容器:', document.querySelector('[data-testid="monitor-plan-section"]'));
+        </pre>
+    </div>
+
+    <div class="test-section">
+        <h2>5. 预期结果</h2>
+        <p>✅ <span class="pass">应该看到的内容：</span></p>
+        <ul>
+            <li>监控计划详细信息（监控项目、触发条件等）</li>
+            <li>状态显示为"激活中"</li>
+            <li><strong>不应该看到</strong>"生成监控计划"按钮</li>
+        </ul>
+        
+        <p>❌ <span class="fail">如果看到以下情况说明还有问题：</span></p>
+        <ul>
+            <li>显示"生成监控计划"按钮且无法点击</li>
+            <li>页面空白或报错</li>
+            <li>Network 标签页没有 /api/monitor-plan 请求</li>
+        </ul>
+    </div>
+
+    <script>
+        // 测试服务器
+        fetch('http://localhost:4001/api/health', { method: 'GET' })
+            .then(r => r.ok ? '✅ 服务器正常' : '❌ 服务器异常')
+            .catch(() => '❌ 无法连接服务器')
+            .then(status => {
+                document.getElementById('server-status').innerHTML = 
+                    status.includes('✅') ? 
+                    `<span class="pass">${status}</span>` : 
+                    `<span class="fail">${status}</span>`;
+            });
+
+        // 测试API
+        fetch('http://localhost:4001/api/monitor-plan?thesisId=cmn9v1tns0003pilmb9xu3q5q')
+            .then(r => r.json())
+            .then(data => {
+                const hasPlan = data.success && data.data?.monitorPlan?.id;
+                document.getElementById('api-status').innerHTML = 
+                    hasPlan ? 
+                    `<span class="pass">✅ API正常，监控计划已存在 (ID: ${data.data.monitorPlan.id})</span>` :
+                    `<span class="info">ℹ️ API正常，但无监控计划</span>`;
+                
+                document.getElementById('api-response').style.display = 'block';
+                document.getElementById('api-response').textContent = JSON.stringify(data, null, 2);
+            })
+            .catch(err => {
+                document.getElementById('api-status').innerHTML = 
+                    `<span class="fail">❌ API错误: ${err.message}</span>`;
+            });
+
+        // 自动刷新
+        setTimeout(() => location.reload(), 30000);
+    </script>
+</body>
+</html>

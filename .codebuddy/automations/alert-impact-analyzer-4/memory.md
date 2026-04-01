@@ -200,7 +200,59 @@
 
 ---
 
-## 2026-03-29 (23:46) - 2个alerts分析完成
+## 2026-03-30 (13:28) - 2个alerts分析完成
+
+**状态**: ✅ 成功完成
+
+**结果**:
+- 未读 important alerts: 1 (美光科技 MU - cmna1ysj6000713t8xbbjodxg)
+- 未读 urgent alerts: 1 (蔚来 NIO - cmna1yllj000313t8252w2mdx)
+- 执行影响分析: 2
+
+**分析结果**:
+
+1. **美光科技 (MU)**:
+   - impactDirection: neutral, impactScore: 5
+   - assumptionStatus: weakened, newHealthScore: 65 (-15)
+
+2. **蔚来 (NIO)**:
+   - impactDirection: bearish, impactScore: 7
+   - assumptionStatus: weakened, newHealthScore: 65 (-17)
+
+**备注**:
+- 使用本地服务 (localhost:4000)
+- 结论与上午执行一致，NIO bearish 持续，MU neutral，分析稳定
+
+---
+
+## 2026-03-31 (20:03) - 2个alerts分析完成
+
+**状态**: ✅ 成功完成
+
+**结果**:
+- 未读 important alerts: 1 (美光科技 MU - cmna1ysj6000713t8xbbjodxg)
+- 未读 urgent alerts: 1 (蔚来 NIO - cmna1yllj000313t8252w2mdx)
+- 执行影响分析: 2
+
+**分析结果**:
+
+1. **美光科技 (MU)**:
+   - impactDirection: neutral, impactScore: 3
+   - assumptionStatus: intact, newHealthScore: 75 (-5)
+   - reasoning: HBM库存周期出现拐点可能预示产品需求变化，但不直接关联营收和利润增长
+
+2. **蔚来 (NIO)**:
+   - impactDirection: bearish, impactScore: 7
+   - assumptionStatus: weakened, newHealthScore: 65 (-15)
+   - reasoning: 月交付量环比下降23%直接挑战蔚来核心业务稳定增长假设
+
+**备注**:
+- 使用本地服务 (localhost:4000)
+- 结果已记录到日记账 2026-03-31.md
+
+---
+
+## 2026-04-01 (11:46) - 2个alerts分析完成
 
 **状态**: ✅ 成功完成
 
@@ -213,12 +265,14 @@
 
 1. **美光科技 (MU)**:
    - impactDirection: neutral, impactScore: 4
-   - assumptionStatus: intact, newHealthScore: 75 (-5)
+   - assumptionStatus: weakened, newHealthScore: 65 (-17)
+   - reasoning: HBM库存周期可能出现拐点表明美光科技的库存管理可能发生变化，这可能影响其供应链效率和成本控制
 
 2. **蔚来 (NIO)**:
    - impactDirection: bearish, impactScore: 7
    - assumptionStatus: weakened, newHealthScore: 65 (-17)
+   - reasoning: 蔚来交付量环比下降23%直接挑战了核心业务稳定增长的假设，对公司的营收和利润增长预期构成压力
 
 **备注**:
 - 使用本地服务 (localhost:4000)
-- 与 22:51 结果对比：MU 的假设状态从 weakened 恢复为 intact，healthScore 从 65 回升至 75
+- 结果已记录到日记账 2026-04-01.md

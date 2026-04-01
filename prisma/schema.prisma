@@ -19,6 +19,7 @@ model Portfolio {
 
   positions   Position[]
   theses      Thesis[]
+  risks       Risk[]
 }
 
 model Position {
@@ -32,6 +33,7 @@ model Position {
   positionWeight  Float
   holdingStyle    String  // short_term / swing / long_term
   investmentThesis String?  // 投资理由/逻辑
+  marketValue     Float?   // 持仓市值（实时计算）
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
@@ -140,6 +142,46 @@ model Alert {
   position          Position @relation(fields: [positionId], references: [id])
   event             Event?   @relation(fields: [eventId], references: [id])
   eventAnalysis     EventAnalysis? @relation(fields: [eventAnalysisId], references: [id])
+}
+
+model Risk {
+  id               String   @id @default(cuid())
+  portfolioId      String
+  positionId       String?
+  thesisId         String?
+  riskType         String   // market / industry / company / financial / regulatory / liquidity / concentration / correlation / currency / volatility
+  riskLevel        String   // low / medium / high / critical
+  status           String   @default("active") // active / monitoring / mitigated / resolved
+  title            String
+  description      String
+  impact           String   // positive / negative
+  probability      Float    // 0-1
+  riskScore        Float    // 0-100
+  factorsJson      String?  @map("factors_json")
+  metricsJson      String?  @map("metrics_json")
+  mitigationsJson  String?  @map("mitigations_json")
+  correlationData  String?  @map("correlation_data")
+  alertTriggered   Boolean  @default(false) @map("alert_triggered")
+  metadata         String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  portfolio Portfolio? @relation(fields: [portfolioId], references: [id])
+}
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  modelType   String   // thesis_generation, event_analysis, alert_impact, daily_summary, risk_assessment, custom
+  provider    String   // kimi, openai, claude, deepseek, local
+  template    String   // SQLite不需要@db.Text
+  variables   String   // JSON string
+  examples    String?  // JSON string
+  version     String   @default("1.0")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model EmailSubscription {

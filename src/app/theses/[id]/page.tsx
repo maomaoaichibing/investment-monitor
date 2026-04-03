@@ -17,6 +17,9 @@ import { HealthScoreRing } from '@/components/dashboard/health-score-ring'
 import { ThinkingProcess } from '@/components/ui/thinking-process'
 import { thesisToThinkingSteps, pillarsToHealthScoreSteps } from '@/lib/thesis-thinking-steps'
 
+// 禁用缓存，确保页面始终是最新数据
+export const dynamic = 'force-dynamic'
+
 interface ThesisDetailPageProps {
   params: {
     id: string

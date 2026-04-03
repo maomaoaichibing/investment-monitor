@@ -5,6 +5,9 @@ import { Badge } from '@/components/ui/badge'
 import { Briefcase as PortfolioIcon, Plus, AlertTriangle, TrendingUp, TrendingDown, BarChart3, ChevronRight } from 'lucide-react'
 import { db } from '@/lib/db'
 
+// 禁用缓存，确保页面始终是最新数据
+export const dynamic = 'force-dynamic'
+
 // 格式化日期
 const formatDate = (date: Date) => {
   return new Date(date).toLocaleDateString('zh-CN', {

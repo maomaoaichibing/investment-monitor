@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,11 +52,7 @@ export default function EventAnalysisPage() {
   const [analysis, setAnalysis] = useState<any>(null);
 
   // 加载事件和论题列表
-  useEffect(() => {
-    loadEventAndTheses();
-  }, [eventId]);
-
-  const loadEventAndTheses = async () => {
+  const loadEventAndTheses = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -90,7 +86,11 @@ export default function EventAnalysisPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [eventId]);
+
+  useEffect(() => {
+    loadEventAndTheses();
+  }, [loadEventAndTheses]);
 
   const generateAnalysis = async () => {
     if (!selectedThesisId) {

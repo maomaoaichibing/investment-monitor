@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,7 +61,7 @@ export default function EventListPage() {
   });
 
   // 加载事件列表
-  const loadEvents = async (page = 1) => {
+  const loadEvents = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       setError(null);
@@ -91,7 +91,7 @@ export default function EventListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   // 首次加载
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function EventListPage() {
   // 筛选条件变化时重新加载
   useEffect(() => {
     loadEvents(1);
-  }, [filters]);
+  }, [loadEvents]);
 
   // 处理筛选变化
   const handleFilterChange = (key: string, value: string) => {

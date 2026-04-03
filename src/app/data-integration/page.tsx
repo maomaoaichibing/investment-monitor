@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -66,11 +66,60 @@ export default function DataIntegrationPage() {
   const [isIntegrating, setIsIntegrating] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadOverviewData()
+  // 加载最近新闻
+  const loadRecentNews = useCallback(async () => {
+    try {
+      const response = await fetch('/api/data-integration/news?limit=5')
+      if (response.ok) {
+        const result = await response.json()
+        setRecentNews(result.data?.news || [])
+      }
+    } catch (error) {
+      console.error('加载新闻失败:', error)
+    }
   }, [])
 
-  const loadOverviewData = async () => {
+  // 加载最近公告
+  const loadRecentAnnouncements = useCallback(async () => {
+    try {
+      const response = await fetch('/api/data-integration/announcements?limit=5')
+      if (response.ok) {
+        const result = await response.json()
+        setRecentAnnouncements(result.data?.announcements || [])
+      }
+    } catch (error) {
+      console.error('加载公告失败:', error)
+    }
+  }, [])
+
+  // 加载最近社交媒体
+  const loadRecentSocialMedia = useCallback(async () => {
+    try {
+      const response = await fetch('/api/data-integration/social-media?limit=5')
+      if (response.ok) {
+        const result = await response.json()
+        setRecentSocialMedia(result.data?.posts || [])
+      }
+    } catch (error) {
+      console.error('加载社交媒体数据失败:', error)
+    }
+  }, [])
+
+  // 加载行业数据
+  const loadIndustryData = useCallback(async () => {
+    try {
+      const response = await fetch('/api/data-integration/industry?limit=5')
+      if (response.ok) {
+        const result = await response.json()
+        setIndustryData(result.data?.industryData || [])
+      }
+    } catch (error) {
+      console.error('加载行业数据失败:', error)
+    }
+  }, [])
+
+  // 加载概览数据
+  const loadOverviewData = useCallback(async () => {
     setLoading(true)
     try {
       // 加载统计数据
@@ -92,55 +141,11 @@ export default function DataIntegrationPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [loadRecentNews, loadRecentAnnouncements, loadRecentSocialMedia, loadIndustryData])
 
-  const loadRecentNews = async () => {
-    try {
-      const response = await fetch('/api/data-integration/news?limit=5')
-      if (response.ok) {
-        const result = await response.json()
-        setRecentNews(result.data?.news || [])
-      }
-    } catch (error) {
-      console.error('加载新闻失败:', error)
-    }
-  }
-
-  const loadRecentAnnouncements = async () => {
-    try {
-      const response = await fetch('/api/data-integration/announcements?limit=5')
-      if (response.ok) {
-        const result = await response.json()
-        setRecentAnnouncements(result.data?.announcements || [])
-      }
-    } catch (error) {
-      console.error('加载公告失败:', error)
-    }
-  }
-
-  const loadRecentSocialMedia = async () => {
-    try {
-      const response = await fetch('/api/data-integration/social-media?limit=5')
-      if (response.ok) {
-        const result = await response.json()
-        setRecentSocialMedia(result.data?.posts || [])
-      }
-    } catch (error) {
-      console.error('加载社交媒体数据失败:', error)
-    }
-  }
-
-  const loadIndustryData = async () => {
-    try {
-      const response = await fetch('/api/data-integration/industry?limit=5')
-      if (response.ok) {
-        const result = await response.json()
-        setIndustryData(result.data?.industryData || [])
-      }
-    } catch (error) {
-      console.error('加载行业数据失败:', error)
-    }
-  }
+  useEffect(() => {
+    loadOverviewData()
+  }, [loadOverviewData])
 
   const handleIntegrateAll = async () => {
     setIsIntegrating(true)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -55,43 +55,6 @@ export default function MonitorPlanTestPage() {
       response
     }
     setTestLogs(prev => [log, ...prev])
-  }
-
-  // 加载论题列表
-  const loadTheses = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch('/api/thesis')
-      if (!response.ok) throw new Error('加载失败')
-      
-      const data = await response.json()
-      const thesisList = data.theses || []
-      
-      // 为每个论题检查是否有monitor plan
-      const thesesWithMonitorPlan = await Promise.all(
-        thesisList.map(async (thesis: any) => {
-          const mpResponse = await fetch(`/api/monitor-plan?thesisId=${thesis.id}`)
-          const mpData = await mpResponse.json()
-          
-          return {
-            id: thesis.id,
-            title: thesis.title,
-            symbol: thesis.position?.symbol || 'N/A',
-            assetName: thesis.position?.assetName || 'N/A',
-            hasMonitorPlan: !!mpData.data?.monitorPlan,
-            monitorPlan: mpData.data?.monitorPlan || null,
-            status: mpData.data?.monitorPlan?.status
-          }
-        })
-      )
-      
-      setTheses(thesesWithMonitorPlan)
-      addTestLog('加载论题列表', 'success', `成功加载 ${thesesWithMonitorPlan.length} 个论题`)
-    } catch (error: any) {
-      addTestLog('加载论题列表', 'error', error.message)
-    } finally {
-      setLoading(false)
-    }
   }
 
   // 生成监控计划
@@ -321,9 +284,46 @@ export default function MonitorPlanTestPage() {
     addTestLog('回归测试', 'success', '自动化回归测试完成')
   }
 
+  // 加载论题列表
+  const loadTheses = useCallback(async () => {
+    setLoading(true)
+    try {
+      const response = await fetch('/api/thesis')
+      if (!response.ok) throw new Error('加载失败')
+      
+      const data = await response.json()
+      const thesisList = data.theses || []
+      
+      // 为每个论题检查是否有monitor plan
+      const thesesWithMonitorPlan = await Promise.all(
+        thesisList.map(async (thesis: any) => {
+          const mpResponse = await fetch(`/api/monitor-plan?thesisId=${thesis.id}`)
+          const mpData = await mpResponse.json()
+          
+          return {
+            id: thesis.id,
+            title: thesis.title,
+            symbol: thesis.position?.symbol || 'N/A',
+            assetName: thesis.position?.assetName || 'N/A',
+            hasMonitorPlan: !!mpData.data?.monitorPlan,
+            monitorPlan: mpData.data?.monitorPlan || null,
+            status: mpData.data?.monitorPlan?.status
+          }
+        })
+      )
+      
+      setTheses(thesesWithMonitorPlan)
+      addTestLog('加载论题列表', 'success', `成功加载 ${thesesWithMonitorPlan.length} 个论题`)
+    } catch (error: any) {
+      addTestLog('加载论题列表', 'error', error.message)
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     loadTheses()
-  }, [])
+  }, [loadTheses])
 
   return (
     <div className="space-y-6 p-6">

@@ -41,44 +41,27 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
   const [isEditing, setIsEditing] = useState(false)
   const [statusUpdating, setStatusUpdating] = useState(false)
 
-  // 调试信息
-  console.log('[MonitorPlan] Debug info:', {
-    thesisId,
-    monitorPlan,
-    hasMonitorPlan: monitorPlan && monitorPlan.id,
-    monitorPlanId: monitorPlan?.id,
-    loading,
-    generating,
-    actionStatus
-  })
-
   // 获取监控计划详情 - 使用useCallback避免无限重渲染
   const fetchMonitorPlan = useCallback(async () => {
-    console.log('[MonitorPlan] fetchMonitorPlan called for thesisId:', thesisId)
     setLoading(true)
     setError(null)
     
     try {
       const url = `/api/monitor-plan?thesisId=${thesisId}`
-      console.log('[MonitorPlan] Fetching from:', url)
       const response = await fetch(url)
-      console.log('[MonitorPlan] Response status:', response.status)
       const data = await response.json()
-      console.log('[MonitorPlan] Response data:', data)
       
       if (data.success) {
         // 直接使用API返回的结构化数据
-        console.log('[MonitorPlan] Setting monitorPlan:', data.data.monitorPlan)
         setMonitorPlan(data.data.monitorPlan)
       } else {
-        console.log('[MonitorPlan] No monitor plan found')
         setMonitorPlan(null)
         if (data.error) {
           setError(data.error)
         }
       }
     } catch (error: any) {
-      console.error('[MonitorPlan] Failed to fetch monitor plan:', error)
+      console.error('Failed to fetch monitor plan:', error)
       setError('获取监控计划失败')
     } finally {
       setLoading(false)
@@ -93,12 +76,8 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
 
   // 生成监控计划（幂等）
   const handleGenerateMonitorPlan = async () => {
-    console.log('[MonitorPlan] handleGenerateMonitorPlan called for thesis:', thesisId)
-    console.log('[MonitorPlan] Current monitorPlan:', monitorPlan)
-    console.log('[MonitorPlan] Current monitorPlan.id:', monitorPlan?.id)
-    
+    // 如果已经有监控计划，直接返回（幂等性）
     if (monitorPlan && monitorPlan.id) {
-      console.log('[MonitorPlan] Already has monitor plan, returning...')
       return
     }
     
@@ -107,7 +86,6 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
     setError(null)
     
     try {
-      console.log('[MonitorPlan] Sending POST request to /api/monitor-plan/generate')
       const response = await fetch('/api/monitor-plan/generate', {
         method: 'POST',
         headers: {
@@ -116,26 +94,22 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
         body: JSON.stringify({ thesisId }),
       })
       
-      console.log('[MonitorPlan] Response status:', response.status)
       const data = await response.json()
-      console.log('[MonitorPlan] Response data:', data)
       
       if (data.success) {
         // 使用API返回的统一结构化数据
         setMonitorPlan(data.data.monitorPlan)
         setActionStatus('success')
-        console.log('[MonitorPlan] Monitor plan generated successfully:', data.data.monitorPlan)
         
         // 3秒后重置状态
         setTimeout(() => setActionStatus('idle'), 3000)
       } else {
         const errorMsg = data.error || '生成失败'
-        console.error('[MonitorPlan] Generate failed:', errorMsg)
         setError(errorMsg)
         setActionStatus('error')
       }
     } catch (error: any) {
-      console.error('[MonitorPlan] Exception during generate:', error)
+      console.error('Exception during generate:', error)
       setError('生成监控计划失败: ' + (error.message || '网络错误'))
       setActionStatus('error')
     } finally {

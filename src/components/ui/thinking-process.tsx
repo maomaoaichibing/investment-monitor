@@ -42,6 +42,10 @@ const formatDuration = (ms?: number): string => {
   return `${(ms / 1000).toFixed(1)}s`
 }
 
+// ==================== 辅助常量 ====================
+
+const TEXT_CLASS = 'text-sm font-medium'
+
 // ==================== 单个步骤组件 ====================
 
 interface StepItemProps {
@@ -312,7 +316,7 @@ export function ThinkingProcess({
                   isRunning && 'animate-pulse text-primary'
                 )}
               />
-              <span className={textClass}>{title}</span>
+              <span className={TEXT_CLASS}>{title}</span>
             </div>
           )}
 
@@ -370,6 +374,4 @@ export function ThinkingProcess({
   )
 }
 
-// ==================== 辅助文本函数 ====================
-
-const textClass = 'text-sm font-medium'
+// ==================== 辅助函数 ====================

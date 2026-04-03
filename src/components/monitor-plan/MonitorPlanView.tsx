@@ -70,7 +70,6 @@ export default function MonitorPlanView({ thesisId, initialMonitorPlan }: Monito
 
   // 页面加载时获取最新数据
   useEffect(() => {
-    console.log('[MonitorPlan] useEffect triggered, thesisId:', thesisId)
     fetchMonitorPlan()
   }, [thesisId, fetchMonitorPlan])
 

@@ -93,12 +93,7 @@ export default function EventListPage() {
     }
   }, [filters]);
 
-  // 首次加载
-  useEffect(() => {
-    loadEvents(1);
-  }, []);
-
-  // 筛选条件变化时重新加载
+  // 首次加载和筛选条件变化时重新加载
   useEffect(() => {
     loadEvents(1);
   }, [loadEvents]);

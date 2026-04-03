@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -41,7 +41,7 @@ export function KLineChart({ symbol, name, market, count = 30 }: KLineChartProps
   const [mouseX, setMouseX] = useState<number>(0)
   const chartRef = useRef<HTMLDivElement>(null)
 
-  const fetchKLine = async () => {
+  const fetchKLine = useCallback(async () => {
     setLoading(true)
     setError(null)
 
@@ -61,14 +61,14 @@ export function KLineChart({ symbol, name, market, count = 30 }: KLineChartProps
     } finally {
       setLoading(false)
     }
-  }
+  }, [symbol, market, count])
 
   useEffect(() => {
     fetchKLine()
     // 30分钟自动刷新
     const interval = setInterval(fetchKLine, 30 * 60 * 1000)
     return () => clearInterval(interval)
-  }, [symbol, market, count, period])
+  }, [fetchKLine])
 
   // 计算MA均线
   const calculateMA = (period: number, data: KLine[]): (number | null)[] => {

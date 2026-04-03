@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { TrendingUp, TrendingDown, Minus, Loader2, AlertCircle, RefreshCw } from 'lucide-react'
 
 interface StockQuote {
@@ -40,16 +40,7 @@ export function StockPriceCard({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchQuote()
-
-    if (autoRefresh && refreshInterval > 0) {
-      const interval = setInterval(fetchQuote, refreshInterval * 1000)
-      return () => clearInterval(interval)
-    }
-  }, [symbol, market, autoRefresh, refreshInterval])
-
-  const fetchQuote = async () => {
+  const fetchQuote = useCallback(async () => {
     try {
       setError(null)
       const response = await fetch(`/api/stock/quote?symbol=${symbol}&market=${market}`)
@@ -66,7 +57,16 @@ export function StockPriceCard({
     } finally {
       setLoading(false)
     }
-  }
+  }, [symbol, market, onPriceUpdate])
+
+  useEffect(() => {
+    fetchQuote()
+
+    if (autoRefresh && refreshInterval > 0) {
+      const interval = setInterval(fetchQuote, refreshInterval * 1000)
+      return () => clearInterval(interval)
+    }
+  }, [fetchQuote, autoRefresh, refreshInterval])
 
   // 格式化数字
   const formatNumber = (num: number, decimals = 2) => {

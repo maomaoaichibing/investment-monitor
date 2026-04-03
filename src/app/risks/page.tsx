@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -87,7 +87,7 @@ export default function RiskDashboard() {
   const [error, setError] = useState<string | null>(null)
 
   // 加载风险统计
-  const loadRiskStats = async () => {
+  const loadRiskStats = useCallback(async () => {
     try {
       const response = await fetch(`/api/risks/stats?portfolioId=${portfolioId}`)
       const result = await response.json()
@@ -101,10 +101,10 @@ export default function RiskDashboard() {
       console.error('加载风险统计失败:', err)
       setError(err instanceof Error ? err.message : '加载风险统计失败')
     }
-  }
+  }, [portfolioId])
 
   // 加载风险暴露
-  const loadRiskExposure = async () => {
+  const loadRiskExposure = useCallback(async () => {
     try {
       const response = await fetch(`/api/risks/exposure?portfolioId=${portfolioId}`)
       const result = await response.json()
@@ -117,10 +117,10 @@ export default function RiskDashboard() {
     } catch (err) {
       console.error('加载风险暴露失败:', err)
     }
-  }
+  }, [portfolioId])
 
   // 加载最近的风险
-  const loadRecentRisks = async () => {
+  const loadRecentRisks = useCallback(async () => {
     try {
       const response = await fetch(`/api/risks?portfolioId=${portfolioId}&page=1&limit=5`)
       const result = await response.json()
@@ -131,7 +131,7 @@ export default function RiskDashboard() {
     } catch (err) {
       console.error('加载风险列表失败:', err)
     }
-  }
+  }, [portfolioId])
 
   // 初始化加载
   useEffect(() => {
@@ -146,7 +146,7 @@ export default function RiskDashboard() {
     }
 
     loadData()
-  }, [portfolioId])
+  }, [loadRiskStats, loadRiskExposure, loadRecentRisks])
 
   if (loading) {
     return (

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { TrendingUp, TrendingDown, Minus, Loader2, RefreshCw, AlertCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
@@ -53,16 +53,7 @@ export function PositionPriceCard({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    fetchQuote()
-
-    if (autoRefresh && refreshInterval > 0) {
-      const interval = setInterval(fetchQuote, refreshInterval * 1000)
-      return () => clearInterval(interval)
-    }
-  }, [symbol, market, autoRefresh, refreshInterval])
-
-  const fetchQuote = async () => {
+  const fetchQuote = useCallback(async () => {
     try {
       setError(null)
       const response = await fetch(`/api/stock/quote/${symbol}?market=${market}`)
@@ -78,7 +69,16 @@ export function PositionPriceCard({
     } finally {
       setLoading(false)
     }
-  }
+  }, [symbol, market])
+
+  useEffect(() => {
+    fetchQuote()
+
+    if (autoRefresh && refreshInterval > 0) {
+      const interval = setInterval(fetchQuote, refreshInterval * 1000)
+      return () => clearInterval(interval)
+    }
+  }, [fetchQuote, autoRefresh, refreshInterval])
 
   // 计算盈亏
   const calculatePnL = () => {

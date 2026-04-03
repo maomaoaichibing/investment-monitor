@@ -77,7 +77,7 @@ export default function DataIntegrationPage() {
       const statsResponse = await fetch('/api/data-integration/stats')
       if (statsResponse.ok) {
         const statsData = await statsResponse.json()
-        setStats(statsData)
+        setStats(statsData || null)
       }
 
       // 加载最近的数据
@@ -98,8 +98,8 @@ export default function DataIntegrationPage() {
     try {
       const response = await fetch('/api/data-integration/news?limit=5')
       if (response.ok) {
-        const data = await response.json()
-        setRecentNews(data.articles || [])
+        const result = await response.json()
+        setRecentNews(result.data?.news || [])
       }
     } catch (error) {
       console.error('加载新闻失败:', error)
@@ -110,8 +110,8 @@ export default function DataIntegrationPage() {
     try {
       const response = await fetch('/api/data-integration/announcements?limit=5')
       if (response.ok) {
-        const data = await response.json()
-        setRecentAnnouncements(data.announcements || [])
+        const result = await response.json()
+        setRecentAnnouncements(result.data?.announcements || [])
       }
     } catch (error) {
       console.error('加载公告失败:', error)
@@ -122,8 +122,8 @@ export default function DataIntegrationPage() {
     try {
       const response = await fetch('/api/data-integration/social-media?limit=5')
       if (response.ok) {
-        const data = await response.json()
-        setRecentSocialMedia(data.posts || [])
+        const result = await response.json()
+        setRecentSocialMedia(result.data?.posts || [])
       }
     } catch (error) {
       console.error('加载社交媒体数据失败:', error)
@@ -134,8 +134,8 @@ export default function DataIntegrationPage() {
     try {
       const response = await fetch('/api/data-integration/industry?limit=5')
       if (response.ok) {
-        const data = await response.json()
-        setIndustryData(data.data || [])
+        const result = await response.json()
+        setIndustryData(result.data?.industryData || [])
       }
     } catch (error) {
       console.error('加载行业数据失败:', error)

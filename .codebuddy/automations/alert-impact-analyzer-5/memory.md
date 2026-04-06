@@ -1,22 +1,22 @@
-# alert-impact-analyzer-5 执行记录
+# Alert Impact Analyzer - 执行记录
 
-## 2026-04-03 19:45
+## 最新执行 (2026-04-06 17:17)
 
-**执行状态**: ✅ 成功
+**状态**: ✅ 成功
 
 **分析结果**:
-- 扫描到 2 条未读 high/medium 级别 alerts
-- 成功分析 2 条 alert
+- 蔚来 (NIO) - Urgent: bearish, 假设 weakened, 健康度→65
+- 美光科技 (MU) - Important: neutral, 假设 intact, 健康度→65
 
-**详细结果**:
-1. 美光科技 (MU) - 库存周期预警 (important)
-   - 影响方向: neutral, 影响分数: 3/10
-   - 健康度变化: -5分 (75→70)
-   
-2. 蔚来 (NIO) - 交付量预警 (urgent)
-   - 影响方向: bearish, 影响分数: 7/10
-   - 健康度变化: -17分 (82→65)
-
-**下次执行**: 2小时后 (FREQ=HOURLY;INTERVAL=2)
+**API**: GET /api/alerts?status=unread, POST /api/alerts/{id}/analyze ×2
 
 ---
+
+## 历史摘要
+
+- 2026-04-06 (17:17): 蔚来 bearish/weakened, 美光 neutral/intact
+- 2026-04-06 (17:14): 蔚来 bearish/weakened, 美光 neutral/intact
+- 2026-04-06 (15:14): 蔚来 bearish/weakened, 美光 neutral/intact
+- 2026-04-06 (13:12): 蔚来 bearish/weakened, 美光 neutral/intact
+- 2026-04-06 (12:41): 蔚来 bearish/weakened, 美光 neutral/intact
+- 2026-04-06 (12:29): 蔚来 bearish/weakened, 美光 neutral/intact

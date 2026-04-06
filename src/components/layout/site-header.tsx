@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Bell, Home, Briefcase, AlertTriangle, BarChart, Settings, Menu, X, TestTube,
-  History, Mail
+  History, Mail, PieChart
 } from 'lucide-react'
 import { db } from '@/lib/db'
 import { VersionBadge } from '@/components/version/version-badge'
@@ -53,6 +53,13 @@ export async function SiteHeader() {
                   {unreadAlertCount}
                 </Badge>
               )}
+            </Link>
+            <Link
+              href="/analytics"
+              className="text-sm font-medium text-muted-foreground hover:text-primary flex items-center gap-2"
+            >
+              <PieChart className="h-4 w-4" />
+              分析
             </Link>
             <Link
               href="/monitor-plan-test"
@@ -106,6 +113,7 @@ function MobileMenu({ unreadAlertCount }: { unreadAlertCount: number }) {
     { href: '/', label: '仪表盘', icon: Home },
     { href: '/portfolios', label: '投资组合', icon: Briefcase },
     { href: '/alerts', label: '提醒', icon: AlertTriangle, badge: unreadAlertCount },
+    { href: '/analytics', label: '数据分析', icon: PieChart },
     { href: '/monitor-plan-test', label: '测试', icon: TestTube },
     { href: '/changelog', label: '版本管理', icon: History },
   ]

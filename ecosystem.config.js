@@ -41,9 +41,9 @@ module.exports = {
     merge_logs: true,
     // 自动重启
     autorestart: true,
-    restart_delay: 4000,
+    restart_delay: 10000,   // 10秒延迟，避免快速反复重启
     max_restarts: 10,
-    min_uptime: '10s',
+    min_uptime: '30s',      // 进程需稳定运行30秒才算成功
     // 环境检查
     env_check: {
       NODE_VERSION: '>=18.0.0'

@@ -134,11 +134,11 @@ export class AlertService {
       where.positionId = query.positionId
     }
 
-    if (query.level) {
+    if (query.level && query.level !== 'all') {
       where.level = query.level
     }
 
-    if (query.status) {
+    if (query.status && query.status !== 'all') {
       where.status = query.status
     }
 

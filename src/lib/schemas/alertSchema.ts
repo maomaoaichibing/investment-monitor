@@ -94,8 +94,8 @@ export type UpdateAlertStatusRequest = z.infer<typeof updateAlertStatusRequestSc
 // Filter Alerts Query Schema
 export const filterAlertsQuerySchema = z.object({
   positionId: z.string().optional(),
-  level: alertLevelSchema.optional(),
-  status: alertStatusSchema.optional(),
+  level: z.enum(['info', 'watch', 'important', 'urgent', 'all']).optional(),
+  status: z.enum(['unread', 'read', 'dismissed', 'all']).optional(),
   limit: z.string().transform(Number).pipe(z.number().min(1).max(100).default(20)).optional(),
   offset: z.string().transform(Number).pipe(z.number().min(0).default(0)).optional(),
 })

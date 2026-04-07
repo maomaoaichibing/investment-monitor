@@ -41,10 +41,10 @@ export default function PortfolioHealthPage({ params }: { params: { id: string }
 
         const portfolioInfo = portfolioData.data
 
-        // 获取持仓列表
+        // 获取持仓列表（API返回裸数组，非{succeess,data}格式）
         const positionsRes = await fetch(`/api/positions?portfolioId=${params.id}`)
-        const positionsData = await positionsRes.json()
-        const positions = positionsData.data || []
+        const positionsRaw = await positionsRes.json()
+        const positions = Array.isArray(positionsRaw) ? positionsRaw : (positionsRaw.data || [])
 
         // 获取每个持仓的thesis和alert信息
         const positionsWithHealth: PositionHealth[] = await Promise.all(

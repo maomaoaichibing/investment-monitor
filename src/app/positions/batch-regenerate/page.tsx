@@ -39,15 +39,15 @@ export default function BatchRegeneratePage() {
   useEffect(() => {
     async function loadData() {
       try {
-        // 加载所有组合
+        // 加载所有组合（API返回裸数组，非{succeess,data}格式）
         const portfoliosRes = await fetch('/api/portfolios')
-        const portfoliosData = await portfoliosRes.json()
-        setPortfolios(portfoliosData.data || [])
+        const portfoliosRaw = await portfoliosRes.json()
+        setPortfolios(Array.isArray(portfoliosRaw) ? portfoliosRaw : (portfoliosRaw.data || []))
 
-        // 加载所有持仓
+        // 加载所有持仓（API返回裸数组，非{succeess,data}格式）
         const positionsRes = await fetch('/api/positions')
-        const positionsData = await positionsRes.json()
-        const allPositions = positionsData.data || []
+        const positionsRaw = await positionsRes.json()
+        const allPositions = Array.isArray(positionsRaw) ? positionsRaw : (positionsRaw.data || [])
 
         // 获取每个持仓的thesis信息
         const positionsWithThesis = await Promise.all(

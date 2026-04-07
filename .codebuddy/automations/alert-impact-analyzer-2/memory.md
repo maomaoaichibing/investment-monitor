@@ -22,9 +22,9 @@
 - 分析结果已写入 /Users/zhangxiaohei/WorkBuddy/smart-investment/.workbuddy/memory/2026-04-07.md
 - 本地服务未运行，使用生产服务器 62.234.79.188:4000
 
-| 2026-04-07 21:33 | ✅ 成功 | 2 | NIO bearish(7), MU neutral(5) |
+| 2026-04-07 23:34 | ✅ 成功 | 2 | NIO bearish(7), MU neutral(3) |
 
----
+| 2026-04-07 21:33 | ✅ 成功 | 2 | NIO bearish(7), MU neutral(5) |
 
 | 2026-04-07 19:27 | ✅ 成功 | 2 | NIO bearish(7), MU neutral(3) |
 

@@ -14,7 +14,15 @@ export async function GET(request: NextRequest) {
     // 解析和验证查询参数
     const queryParams: any = {}
     if (searchParams.get('positionId')) queryParams.positionId = searchParams.get('positionId')
-    if (searchParams.get('level')) queryParams.level = searchParams.get('level')
+    
+    // 支持逗号分隔的多值格式（如 "important,urgent"），取最高优先级（第一个非all的值）
+    const rawLevel = searchParams.get('level')
+    if (rawLevel) {
+      const levels = rawLevel.split(',').map(l => l.trim())
+      const firstValid = levels.find(l => l !== 'all') || 'all'
+      queryParams.level = firstValid
+    }
+    
     if (searchParams.get('status')) queryParams.status = searchParams.get('status')
     if (searchParams.get('limit')) queryParams.limit = searchParams.get('limit')
     if (searchParams.get('offset')) queryParams.offset = searchParams.get('offset')

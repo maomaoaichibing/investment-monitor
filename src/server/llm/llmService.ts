@@ -641,6 +641,7 @@ export class LLMService {
   async generateDailySummary(params: {
     portfoliosJson: string
     todayDataChangesJson: string
+    date?: string
   }): Promise<any> {
     const prompt = buildDailySummaryPrompt(params)
 

@@ -2,7 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { llmService } from '@/server/llm/llmService'
 
+// 禁用缓存，每次请求实时生成
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
+  const todayStr = new Date().toISOString().split('T')[0]
   try {
     // 获取所有持仓及其 Thesis
     const positions = await db.position.findMany({
@@ -66,11 +70,12 @@ export async function GET(request: NextRequest) {
       2
     )
 
-    // 调用 LLM 生成每日摘要
-    console.log('[DailySummary] Generating daily summary...')
+    // 调用 LLM 生成每日摘要（传入今日日期确保日期正确）
+    console.log('[DailySummary] Generating daily summary for', todayStr)
     const summary = await llmService.generateDailySummary({
       portfoliosJson,
       todayDataChangesJson,
+      date: todayStr,
     })
 
     return NextResponse.json({

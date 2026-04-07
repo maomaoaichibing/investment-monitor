@@ -7,11 +7,13 @@
 export function buildDailySummaryPrompt(params: {
   portfoliosJson: string  // JSON string of portfolio positions
   todayDataChangesJson: string  // JSON string of today's data changes
+  date?: string  // 今日日期，格式 YYYY-MM-DD
 }): string {
-  const { portfoliosJson, todayDataChangesJson } = params
+  const { portfoliosJson, todayDataChangesJson, date } = params
+  const todayDate = date || new Date().toISOString().split('T')[0]
 
   return `# 角色
-你是用户的私人投资顾问助理，负责生成每日投资监控简报。
+你是用户的私人投资顾问助理，负责生成每日投资监控简报。今天是 **${todayDate}**。
 
 # 任务
 基于以下持仓和最近的数据变化，生成一份简洁的每日监控简报。
@@ -49,7 +51,7 @@ ${todayDataChangesJson}
 请生成一份结构化简报，JSON 格式：
 
 {
-  "date": "2026-03-27",
+  "date": "${todayDate}",
   "summary": "一句话总结今日整体情况",
   "critical_alerts": [
     {

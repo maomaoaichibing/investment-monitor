@@ -83,23 +83,74 @@ function parseYahooRSS(xml: string, symbol: string): NewsItem[] {
 
 /**
  * 解析东方财富新闻（JSON API）
+ * 数据格式: data.list[].title, data.list[].notice_date, data.list[].art_code
  */
 function parseEastMoneyNews(json: any, symbol: string): NewsItem[] {
   const items: NewsItem[] = []
   
-  if (!json || !json.data || !Array.isArray(json.data)) return items
+  if (!json || !json.data) return items
   
-  for (const item of json.data.slice(0, 20)) {
+  // 支持两种格式: data.list[] 或 data[]
+  const list = json.data.list || json.data || []
+  const arr = Array.isArray(list) ? list : [list]
+  
+  for (const item of arr.slice(0, 20)) {
     if (!item.title) continue
+    
+    // 构造公告链接
+    const url = item.art_code 
+      ? `https://www.eastmoney.com/news/${item.art_code}`
+      : ''
     
     items.push({
       symbol,
       title: item.title || '',
       content: item.summary || item.desc || item.content || '',
-      url: item.url || item.art_url || '',
-      source: item.media || item.source || '东方财富',
-      publishedAt: item.showtime || item.ctime || new Date().toISOString(),
-      tags: item.labels || []
+      url,
+      source: item.media_name || item.column_name || '东方财富',
+      publishedAt: item.notice_date || item.display_time || item.eiTime || new Date().toISOString(),
+      tags: item.labels || item.column_name ? [item.column_name] : []
+    })
+  }
+  
+  return items
+}
+
+/**
+ * 解析新浪财经滚动新闻（通用财经新闻）
+ */
+function parseSinaNews(json: any, targetSymbols?: string[]): NewsItem[] {
+  const items: NewsItem[] = []
+  
+  const data = json?.result?.data || json?.data || []
+  if (!Array.isArray(data)) return items
+  
+  for (const item of data.slice(0, 30)) {
+    if (!item.title) continue
+    
+    // 发布时间
+    const ctime = item.ctime ? new Date(item.ctime * 1000).toISOString() : new Date().toISOString()
+    
+    // 从关键词提取相关股票
+    const keywords: string[] = []
+    if (item.ext_0) keywords.push(...item.ext_0.split(',').filter(Boolean))
+    if (item.keywords) keywords.push(...item.keywords.split(',').filter(Boolean).slice(0, 3))
+    
+    // 如果指定了目标股票，过滤
+    if (targetSymbols && targetSymbols.length > 0) {
+      const titleLower = (item.title + item.summary).toLowerCase()
+      const matched = targetSymbols.filter(s => titleLower.includes(s.toLowerCase()))
+      if (matched.length === 0) continue
+    }
+    
+    items.push({
+      symbol: keywords[0] || targetSymbols?.[0] || '',
+      title: item.title || '',
+      content: item.summary || item.intro || '',
+      url: item.url || item.wapurl || '',
+      source: item.media_name || item.author || '新浪财经',
+      publishedAt: ctime,
+      tags: Array.from(new Set([...(item.keywords?.split(',').filter(Boolean).slice(0, 5) || []), ...keywords]))
     })
   }
   
@@ -236,7 +287,55 @@ async function fetchFromEastMoney(symbol: string, market: string): Promise<NewsR
   }
 }
 
-// ============== 数据源 3: Yahoo Finance Web Search (兜底) ==============
+// ============== 数据源 3: 新浪财经滚动新闻 ==============
+
+/**
+ * 从新浪财经获取滚动新闻（通用财经，匹配目标股票）
+ * 适合国内服务器访问，覆盖A股/港股财经新闻
+ */
+async function fetchFromSinaNews(symbol?: string, market?: string): Promise<NewsResult> {
+  try {
+    // 财经要闻滚动
+    const url = `https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&k=&num=20&page=1&r=${Math.random()}`
+    
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0',
+        'Referer': 'https://finance.sina.com.cn'
+      },
+      signal: AbortSignal.timeout(8000)
+    })
+    
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}`, source: 'sina_news' }
+    }
+    
+    const json = await response.json()
+    
+    // 如果指定了股票，只返回相关新闻
+    const targetSymbols = symbol ? [symbol] : undefined
+    const items = parseSinaNews(json, targetSymbols)
+    
+    if (items.length === 0) {
+      return { success: false, error: '未找到新闻', source: 'sina_news' }
+    }
+    
+    return {
+      success: true,
+      data: items,
+      source: 'sina_news',
+      fetchedAt: new Date().toISOString()
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '新浪财经获取失败',
+      source: 'sina_news'
+    }
+  }
+}
+
+// ============== 数据源 4: Yahoo Finance Web Search (兜底) ==============
 
 async function fetchFromYahooSearch(symbol: string, market: string): Promise<NewsResult> {
   try {
@@ -318,18 +417,20 @@ export async function fetchNewsForSymbol(
   if (market === 'US') {
     sources.push(
       { fn: fetchFromYahooSearch, name: 'Yahoo Search' },
-      { fn: fetchFromYahooRSS, name: 'Yahoo RSS' }
+      { fn: fetchFromYahooRSS, name: 'Yahoo RSS' },
+      { fn: fetchFromSinaNews, name: '新浪财经' }
     )
   } else if (market === 'HK') {
     sources.push(
+      { fn: fetchFromSinaNews, name: '新浪财经' },
       { fn: fetchFromYahooSearch, name: 'Yahoo Search' },
       { fn: fetchFromYahooRSS, name: 'Yahoo RSS' }
     )
   } else {
-    // A股优先东方财富
+    // A股：新浪财经 + 东方财富
     sources.push(
-      { fn: fetchFromEastMoney, name: '东方财富' },
-      { fn: fetchFromYahooSearch, name: 'Yahoo Search' }
+      { fn: fetchFromSinaNews, name: '新浪财经' },
+      { fn: fetchFromEastMoney, name: '东方财富' }
     )
   }
   
@@ -395,6 +496,44 @@ export async function fetchNewsForAllPositions(
         allNews.push(...result.data)
       } else {
         errors[symbol] = result.error || '未知错误'
+      }
+    }
+  }
+  
+  // 如果没有任何股票新闻，尝试获取新浪财经综合新闻
+  if (allNews.length === 0 && uniquePositions.length > 0) {
+    console.log('[NewsService] 所有持仓新闻获取失败，尝试新浪财经综合新闻...')
+    const sinaResult = await fetchFromSinaNews()
+    if (sinaResult.success && sinaResult.data) {
+      // 匹配持仓股票
+      const symbolCodes = uniquePositions.map(p => p.symbol.toLowerCase())
+      const matchedNews = sinaResult.data.filter(item => {
+        const text = (item.title + item.content).toLowerCase()
+        return symbolCodes.some(s => text.includes(s.toLowerCase()))
+      })
+      
+      for (const item of matchedNews) {
+        const matchedSymbol = uniquePositions.find(p => 
+          (item.title + item.content).toLowerCase().includes(p.symbol.toLowerCase())
+        )
+        if (matchedSymbol) {
+          item.symbol = matchedSymbol.symbol
+        }
+        allNews.push(item)
+      }
+      
+      // 即使没有匹配，也添加前5条综合新闻
+      if (allNews.length === 0 && sinaResult.data.length > 0) {
+        const symbols = uniquePositions.map(p => p.symbol)
+        const generalNews = sinaResult.data.slice(0, 5).map(item => ({
+          ...item,
+          symbol: `财经(${symbols.join(',')})`
+        }))
+        allNews.push(...generalNews)
+      }
+      
+      if (allNews.length > 0) {
+        console.log(`[NewsService] 新浪财经补充新闻 ${allNews.length} 条`)
       }
     }
   }

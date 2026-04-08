@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { dataIntegrationService } from '@/server/services/dataIntegrationService'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * GET /api/data-integration/news
  * 获取新闻数据

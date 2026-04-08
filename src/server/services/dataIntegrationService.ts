@@ -1,4 +1,5 @@
 import { db } from '@/lib/db'
+import { fetchNewsForSymbol } from './newsService'
 
 export interface NewsArticle {
   title: string
@@ -43,187 +44,241 @@ export interface IndustryData {
   publishedAt: Date
 }
 
+// ============ 真实数据源辅助函数 ============
+
+/**
+ * 从东方财富抓取真实公告
+ */
+async function fetchEastMoneyAnnouncements(symbol: string): Promise<CompanyAnnouncement[]> {
+  try {
+    let secid: string
+    if (symbol.startsWith('6')) {
+      secid = `1.${symbol}`
+    } else if (symbol.startsWith('0') || symbol.startsWith('3')) {
+      secid = `0.${symbol}`
+    } else if (symbol.startsWith('4') || symbol.startsWith('8')) {
+      secid = `0.${symbol}`
+    } else {
+      secid = `116.${symbol}`
+    }
+
+    const url = `https://np-anotice-stock.eastmoney.com/api/security/ann?sr=-1&page_size=20&page_index=1&ann_type=SHA,SZA&secid=${secid}&stock=${symbol}`
+
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://www.eastmoney.com' },
+      signal: AbortSignal.timeout(8000)
+    })
+
+    if (!response.ok) return []
+
+    const json: any = await response.json()
+    const list = json?.data?.list || []
+
+    return list.slice(0, 20).map((item: any) => {
+      let type: CompanyAnnouncement['type'] = 'other'
+      const tl = (item.title || '').toLowerCase()
+      if (tl.includes('年度') || tl.includes('季度') || tl.includes('半年') || tl.includes('业绩') || tl.includes('财报')) type = 'earnings'
+      else if (tl.includes('分红') || tl.includes('派息') || tl.includes('股息') || tl.includes('红利')) type = 'dividend'
+      else if (tl.includes('收购') || tl.includes('并购') || tl.includes('合并')) type = 'merger'
+      else if (tl.includes('任命') || tl.includes('董事') || tl.includes('高管') || tl.includes('辞职')) type = 'management'
+
+      return {
+        title: item.title || '',
+        content: item.summary || '',
+        type,
+        symbol,
+        publishedAt: new Date(item.notice_date || item.display_time || Date.now()),
+        url: item.art_code ? `https://www.eastmoney.com/news/${item.art_code}` : undefined
+      }
+    })
+  } catch (error) {
+    console.error(`[DataIntegration] 东方财富公告获取失败 ${symbol}:`, error)
+    return []
+  }
+}
+
+/**
+ * 从新浪财经抓取股票相关新闻
+ */
+async function fetchSinaNewsForSymbol(symbol: string): Promise<NewsArticle[]> {
+  try {
+    const url = `https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&k=${encodeURIComponent(symbol)}&num=10&page=1&r=${Math.random()}`
+
+    const response = await fetch(url, {
+      headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://finance.sina.com.cn' },
+      signal: AbortSignal.timeout(8000)
+    })
+
+    if (!response.ok) return []
+
+    const json: any = await response.json()
+    const data = json?.result?.data || []
+
+    return data.slice(0, 10).map((item: any) => ({
+      title: item.title || '',
+      content: item.summary || item.intro || '',
+      source: item.media_name || '新浪财经',
+      url: item.url || '',
+      publishedAt: new Date(item.ctime ? item.ctime * 1000 : Date.now()),
+      symbol,
+      sentiment: 'neutral' as const,
+      summary: (item.summary || '').substring(0, 100)
+    }))
+  } catch (error) {
+    console.error(`[DataIntegration] 新浪新闻获取失败 ${symbol}:`, error)
+    return []
+  }
+}
+
 /**
  * 数据集成服务
- * 负责从多个数据源抓取和整合数据
+ * 从多个真实数据源抓取和整合数据
  */
 export class DataIntegrationService {
   /**
-   * 抓取新闻数据
+   * 抓取新闻数据（真实来源：Yahoo Finance + 新浪财经）
    */
   async fetchNews(symbol?: string, limit: number = 20): Promise<NewsArticle[]> {
-    // 模拟新闻数据抓取（实际应用中调用真实的新闻API）
-    const mockNews: NewsArticle[] = [
-      {
-        title: `${symbol || '腾讯控股'}发布Q4财报，营收超预期`,
-        content: `${symbol || '腾讯控股'}发布2024年第四季度财报，营收同比增长15%，净利润增长20%，超出市场预期。主要得益于游戏业务和游戏广告收入的强劲增长。`,
-        source: '新浪财经',
-        url: `https://finance.sina.com.cn/realstock/company/${symbol || '00700'}/news.shtml`,
-        publishedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-        symbol: symbol,
-        sentiment: Math.random() > 0.5 ? 'positive' : 'neutral',
-        summary: `${symbol || '腾讯控股'}Q4财报营收超预期，同比增长15%`
-      },
-      {
-        title: `分析师上调${symbol || '腾讯控股'}目标价至450港元`,
-        content: `多家投行分析师发布报告，上调${symbol || '腾讯控股'}目标价至450港元，维持"买入"评级。分析师认为公司游戏业务和新业务线将继续驱动增长。`,
-        source: '东方财富',
-        url: `https://stock.eastmoney.com/a/news/${Date.now()}.html`,
-        publishedAt: new Date(Date.now() - Math.random() * 3 * 24 * 60 * 60 * 1000),
-        symbol: symbol,
-        sentiment: 'positive',
-        summary: `分析师上调${symbol || '腾讯控股'}目标价至450港元`
+    if (!symbol) {
+      const events = await db.event.findMany({
+        where: { source: 'news' },
+        orderBy: { eventTime: 'desc' },
+        take: limit
+      })
+      return events.map(e => {
+        const meta = JSON.parse(e.metadataJson || '{}')
+        return {
+          title: e.title,
+          content: e.content,
+          source: e.source,
+          url: meta.url || '',
+          publishedAt: e.eventTime,
+          symbol: e.symbol,
+          sentiment: (meta.sentiment || 'neutral') as 'positive' | 'neutral' | 'negative',
+          summary: e.content.substring(0, 100)
+        }
+      })
+    }
+
+    // 优先使用 newsService（Yahoo Finance 多源）
+    const newsResult = await fetchNewsForSymbol(symbol, 'US', { limit })
+    if (newsResult.success && newsResult.data && newsResult.data.length > 0) {
+      return newsResult.data.map(item => ({
+        title: item.title,
+        content: item.content,
+        source: item.source,
+        url: item.url,
+        publishedAt: new Date(item.publishedAt),
+        symbol: item.symbol,
+        sentiment: item.sentiment || 'neutral',
+        summary: item.content.substring(0, 100)
+      }))
+    }
+
+    // 降级：新浪财经
+    const sinaNews = await fetchSinaNewsForSymbol(symbol)
+    if (sinaNews.length > 0) return sinaNews.slice(0, limit)
+
+    // 终极降级：从数据库读取
+    const dbEvents = await db.event.findMany({
+      where: { symbol, source: 'news' },
+      orderBy: { eventTime: 'desc' },
+      take: limit
+    })
+    return dbEvents.map(e => {
+      const meta = JSON.parse(e.metadataJson || '{}')
+      return {
+        title: e.title,
+        content: e.content,
+        source: e.source,
+        url: meta.url || '',
+        publishedAt: e.eventTime,
+        symbol: e.symbol,
+        sentiment: 'neutral' as const,
+        summary: e.content.substring(0, 100)
       }
-    ]
-
-    // 随机生成更多新闻
-    const additionalNews: NewsArticle[] = Array.from({ length: limit - 2 }, (_, i) => ({
-      title: `${symbol || '市场'}动态${i + 1}: ${this.generateNewsTitle()}`,
-      content: this.generateNewsContent(),
-      source: ['新浪财经', '东方财富', '腾讯新闻', '第一财经'][Math.floor(Math.random() * 4)],
-      url: `https://news.example.com/${Date.now()}_${i}`,
-      publishedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-      symbol: symbol,
-      sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)] as 'positive' | 'neutral' | 'negative',
-      summary: `新闻摘要${i + 1}`
-    }))
-
-    return [...mockNews, ...additionalNews]
+    })
   }
 
   /**
-   * 抓取公司公告
+   * 抓取公司公告（真实来源：东方财富）
    */
   async fetchAnnouncements(symbol: string, limit: number = 10): Promise<CompanyAnnouncement[]> {
-    const announcements: CompanyAnnouncement[] = [
-      {
-        title: `${symbol} 2024年年度报告`,
-        content: `公司发布2024年年度报告，全年实现营业收入XX亿元，同比增长XX%；净利润XX亿元，同比增长XX%。拟每10股派发现金红利XX元。`,
-        type: 'earnings',
-        symbol: symbol,
-        publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        url: `http://www.hkexnews.hk/listedco/listconews/SEHK/${Date.now()}.htm`,
-        fileUrl: `http://www.hkexnews.hk/listedco/listconews/SEHK/${Date.now()}.pdf`
-      },
-      {
-        title: `${symbol} 董事会会议通知`,
-        content: `公司将于2024年4月15日召开董事会会议，审议2024年第一季度业绩及派息事宜。`,
-        type: 'management',
-        symbol: symbol,
-        publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        url: `http://www.hkexnews.hk/listedco/listconews/SEHK/${Date.now()}.htm`
-      }
-    ]
+    const announcements = await fetchEastMoneyAnnouncements(symbol)
+    if (announcements.length > 0) return announcements.slice(0, limit)
 
-    // 随机生成更多公告
-    const types: CompanyAnnouncement['type'][] = ['earnings', 'dividend', 'management', 'other']
-    const additionalAnnouncements: CompanyAnnouncement[] = Array.from({ length: limit - 2 }, (_, i) => {
-      const type = types[Math.floor(Math.random() * types.length)]
+    // 降级：数据库已有事件
+    const dbEvents = await db.event.findMany({
+      where: { symbol, eventType: { in: ['earnings', 'announcement', 'dividend', 'management'] } },
+      orderBy: { eventTime: 'desc' },
+      take: limit
+    })
+    return dbEvents.map(e => {
+      let type: CompanyAnnouncement['type'] = 'other'
+      const tl = e.title.toLowerCase()
+      if (tl.includes('年度') || tl.includes('季度') || tl.includes('业绩')) type = 'earnings'
+      else if (tl.includes('分红') || tl.includes('派息') || tl.includes('股息')) type = 'dividend'
+      else if (tl.includes('收购') || tl.includes('并购')) type = 'merger'
+      else if (tl.includes('任命') || tl.includes('董事') || tl.includes('高管')) type = 'management'
+
+      const meta = JSON.parse(e.metadataJson || '{}')
       return {
-        title: `${symbol} ${type === 'earnings' ? '业绩' : type === 'dividend' ? '股息' : type === 'management' ? '人事' : '其他'}公告${i + 1}`,
-        content: `公告内容${i + 1}`,
+        title: e.title,
+        content: e.content,
         type,
-        symbol: symbol,
-        publishedAt: new Date(Date.now() - Math.random() * 90 * 24 * 60 * 60 * 1000),
-        url: `http://www.hkexnews.hk/listedco/listconews/SEHK/${Date.now()}_${i}.htm`
+        symbol: e.symbol,
+        publishedAt: e.eventTime,
+        url: meta.url || undefined
       }
     })
-
-    return [...announcements, ...additionalAnnouncements]
   }
 
   /**
-   * 抓取社交媒体数据
+   * 抓取财经社交媒体（新浪财经滚动新闻）
    */
   async fetchSocialMedia(symbol?: string, limit: number = 30): Promise<SocialMediaPost[]> {
-    const platforms: SocialMediaPost['platform'][] = ['weibo', 'twitter', 'stocktwits']
-    
-    const posts: SocialMediaPost[] = [
-      {
-        platform: 'weibo',
-        author: '财经博主A',
-        content: `${symbol || '腾讯'}今天走势很强啊，财报超预期就是不一样！`,
-        publishedAt: new Date(Date.now() - Math.random() * 12 * 60 * 60 * 1000),
-        symbol: symbol,
-        sentiment: 'positive',
-        likes: Math.floor(Math.random() * 1000) + 100,
-        shares: Math.floor(Math.random() * 500) + 50,
-        comments: Math.floor(Math.random() * 200) + 20
-      },
-      {
-        platform: 'twitter',
-        author: 'InvestorB',
-        content: `${symbol || 'TCEHY'} shows strong momentum after earnings beat. Watching for breakout above $45.`,
-        publishedAt: new Date(Date.now() - Math.random() * 8 * 60 * 60 * 1000),
-        symbol: symbol,
-        sentiment: 'positive',
-        likes: Math.floor(Math.random() * 500) + 50,
-        shares: Math.floor(Math.random() * 200) + 20,
-        comments: Math.floor(Math.random() * 100) + 10
-      }
-    ]
+    if (!symbol) return []
 
-    // 随机生成更多社交媒体帖子
-    const additionalPosts: SocialMediaPost[] = Array.from({ length: limit - 2 }, (_, i) => {
-      const platform = platforms[Math.floor(Math.random() * platforms.length)]
-      return {
-        platform,
-        author: `${platform}用户${i + 1}`,
-        content: this.generateSocialMediaPost(symbol),
-        publishedAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-        symbol: symbol,
-        sentiment: ['positive', 'neutral', 'negative'][Math.floor(Math.random() * 3)] as 'positive' | 'neutral' | 'negative',
-        likes: Math.floor(Math.random() * 1000),
-        shares: Math.floor(Math.random() * 500),
-        comments: Math.floor(Math.random() * 200)
-      }
-    })
+    try {
+      const url = `https://feed.mix.sina.com.cn/api/roll/get?pageid=153&lid=2516&k=${encodeURIComponent(symbol)}&num=${limit}&page=1&r=${Math.random()}`
+      const response = await fetch(url, {
+        headers: { 'User-Agent': 'Mozilla/5.0', 'Referer': 'https://finance.sina.com.cn' },
+        signal: AbortSignal.timeout(8000)
+      })
 
-    return [...posts, ...additionalPosts]
+      if (response.ok) {
+        const json: any = await response.json()
+        const data = json?.result?.data || []
+        return data.slice(0, limit).map((item: any) => ({
+          platform: 'weibo' as const,
+          author: item.media_name || '财经媒体',
+          content: item.title + (item.summary ? ' ' + item.summary : ''),
+          publishedAt: new Date(item.ctime ? item.ctime * 1000 : Date.now()),
+          symbol,
+          sentiment: 'neutral' as const,
+          likes: 0, shares: 0, comments: 0
+        }))
+      }
+    } catch (error) {
+      console.error(`[DataIntegration] 社交媒体获取失败:`, error)
+    }
+    return []
   }
 
   /**
-   * 抓取行业数据
+   * 抓取行业数据（从持仓数据实时生成）
    */
-  async fetchIndustryData(industry: string, period: string = '2024Q1'): Promise<IndustryData[]> {
-    const industries = ['technology', 'finance', 'energy', 'healthcare', 'consumer']
-    const metrics = ['revenue_growth', 'profit_margin', 'pe_ratio', 'market_share']
-    
-    const data: IndustryData[] = [
-      {
-        industry: 'technology',
-        metric: 'revenue_growth',
-        value: 15.2,
-        unit: '%',
-        period: '2024Q1',
-        source: '国家统计局',
-        publishedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-      },
-      {
-        industry: 'technology',
-        metric: 'profit_margin',
-        value: 22.8,
-        unit: '%',
-        period: '2024Q1',
-        source: '工信部',
-        publishedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
-      }
-    ]
-
-    // 生成更多行业数据
-    const additionalData: IndustryData[] = industries.flatMap(ind => 
-      metrics.map(metric => ({
-        industry: ind,
-        metric,
-        value: Math.random() * 100,
-        unit: ['%', '亿元', '倍'][Math.floor(Math.random() * 3)],
-        period,
-        source: ['国家统计局', '工信部', '商务部'][Math.floor(Math.random() * 3)],
-        publishedAt: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000)
-      }))
-    )
-
-    return [...data, ...additionalData.filter(d => d.industry === industry || !industry)]
+  async fetchIndustryData(industry: string, period: string = 'latest'): Promise<IndustryData[]> {
+    const positions = await db.position.findMany({ include: { portfolio: { select: { name: true } } } })
+    return positions.slice(0, 10).map(p => ({
+      industry: industry || 'diversified',
+      metric: 'market_value',
+      value: p.marketValue ?? 0,
+      unit: 'CNY',
+      period,
+      source: '持仓系统',
+      publishedAt: new Date()
+    }))
   }
 
   /**
@@ -249,81 +304,15 @@ export class DataIntegrationService {
       limit = 20
     } = options || {}
 
-    const promises: Promise<any[]>[] = []
+    const [news, announcements, socialMedia, industryData] = await Promise.all([
+      includeNews ? this.fetchNews(symbol, limit) : Promise.resolve([]),
+      includeAnnouncements && symbol ? this.fetchAnnouncements(symbol, limit) : Promise.resolve([]),
+      includeSocialMedia ? this.fetchSocialMedia(symbol, limit) : Promise.resolve([]),
+      includeIndustryData ? this.fetchIndustryData('technology', 'latest') : Promise.resolve([])
+    ])
 
-    if (includeNews) {
-      promises.push(this.fetchNews(symbol, limit))
-    } else {
-      promises.push(Promise.resolve([]))
-    }
-
-    if (includeAnnouncements && symbol) {
-      promises.push(this.fetchAnnouncements(symbol, limit))
-    } else {
-      promises.push(Promise.resolve([]))
-    }
-
-    if (includeSocialMedia) {
-      promises.push(this.fetchSocialMedia(symbol, limit))
-    } else {
-      promises.push(Promise.resolve([]))
-    }
-
-    if (includeIndustryData) {
-      promises.push(this.fetchIndustryData('technology', '2024Q1'))
-    } else {
-      promises.push(Promise.resolve([]))
-    }
-
-    const [news, announcements, socialMedia, industryData] = await Promise.all(promises)
-
-    return {
-      news,
-      announcements,
-      socialMedia,
-      industryData
-    }
-  }
-
-  // 辅助方法：生成新闻标题
-  private generateNewsTitle(): string {
-    const titles = [
-      '市场关注政策动向，投资者谨慎观望',
-      '科技股集体上涨，带动指数走高',
-      '经济数据超预期，提振市场信心',
-      '美联储表态偏鹰，全球市场震荡',
-      '新能源板块持续走强，资金流入明显',
-      '消费复苏信号显现，相关个股受关注',
-      '汇率波动加大，出口企业受益',
-      '监管政策出台，行业格局或重塑'
-    ]
-    return titles[Math.floor(Math.random() * titles.length)]
-  }
-
-  // 辅助方法：生成新闻内容
-  private generateNewsContent(): string {
-    const contents = [
-      '今日市场呈现震荡格局，成交量较昨日有所放大。盘面上，科技股表现活跃，新能源板块涨幅居前。分析人士认为，随着政策利好逐步释放，市场有望继续走强。',
-      '最新公布的经济数据显示，制造业PMI连续三个月处于扩张区间，表明经济复苏态势良好。受此消息影响，相关周期股表现强劲。',
-      '央行今日开展逆回购操作，向市场注入流动性。业内人士表示，此举有助于维护市场资金面稳定，对股市形成支撑。',
-      '多家上市公司发布业绩预告，新能源、医药生物等板块业绩表现突出。机构建议投资者关注业绩确定性强的优质标的。'
-    ]
-    return contents[Math.floor(Math.random() * contents.length)]
-  }
-
-  // 辅助方法：生成社交媒体帖子
-  private generateSocialMediaPost(symbol?: string): string {
-    const posts = [
-      `${symbol || '这只股票'}今天表现不错，值得关注！`,
-      `刚看了${symbol || '这家公司'}的财报，数据超预期！`,
-      `${symbol || '这个板块'}最近走势很强，有资金介入`,
-      `风险提示：${symbol || '该标的'}短期涨幅较大，注意回调风险`,
-      `${symbol || '该股'}技术面显示突破迹象，量能配合良好`,
-      `基本面分析：${symbol || '该公司'}业绩稳健，估值合理`
-    ]
-    return posts[Math.floor(Math.random() * posts.length)]
+    return { news, announcements, socialMedia, industryData }
   }
 }
 
-// 导出服务实例
 export const dataIntegrationService = new DataIntegrationService()

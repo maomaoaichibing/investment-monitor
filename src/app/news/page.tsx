@@ -1,11 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink, Newspaper, Bell, Clock, Globe } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Newspaper, Bell, Clock, Globe } from 'lucide-react'
 
 interface NewsItem {
   symbol: string; title: string; titleZh?: string; content: string; url?: string
@@ -39,26 +40,44 @@ function timeAgo(d: string) {
 }
 
 function NewsCard({ item }: { item: NewsItem | StoredItem }) {
+  const router = useRouter()
   const sc = sentConf(item.sentiment, item.sentimentScore)
   const Icon = sc.icon
   const t = (item as any).eventTime || (item as any).publishedAt || new Date().toISOString()
   const zhTitle = (item as any).titleZh || item.title
   const enTitle = (item as any).titleZh ? item.title : null
+
+  function goDetail() {
+    // 导航到详情中转页，传递必要数据
+    const q = new URLSearchParams()
+    if (item.symbol) q.set('symbol', item.symbol)
+    if (zhTitle !== item.title) q.set('titleZh', zhTitle)
+    if (item.title) q.set('title', item.title)
+    if (item.content) q.set('content', item.content)
+    if (item.url) q.set('url', item.url)
+    if (item.source) q.set('source', item.source)
+    if ((item as any).newsSource) q.set('newsSource', (item as any).newsSource)
+    if (item.sentiment) q.set('sentiment', item.sentiment)
+    if (item.sentimentScore !== undefined) q.set('score', String(item.sentimentScore))
+    if (t) q.set('time', t)
+    router.push(`/news/detail?${q.toString()}`)
+  }
+
   return (
-    <div className={`rounded-lg border p-4 hover:shadow-sm transition ${sc.icon === TrendingUp ? 'bg-green-50/50 border-green-100' : sc.icon === TrendingDown ? 'bg-red-50/50 border-red-100' : 'bg-white'}`}>
+    <div
+      className={`rounded-lg border p-4 hover:shadow-sm transition cursor-pointer ${sc.icon === TrendingUp ? 'bg-green-50/50 border-green-100 hover:border-green-200' : sc.icon === TrendingDown ? 'bg-red-50/50 border-red-100 hover:border-red-200' : 'bg-white hover:border-primary/20'}`}
+      onClick={goDetail}
+    >
       <div className="flex gap-3">
         <Icon className={`h-5 w-5 flex-shrink-0 mt-0.5 ${sc.color}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
             <h3
-              className="font-medium text-sm leading-snug line-clamp-2"
-              title={enTitle || ''}
+              className="font-medium text-sm leading-snug line-clamp-2 hover:text-primary transition"
+              title={enTitle || zhTitle}
             >
-              {item.url
-                ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary">{zhTitle}</a>
-                : zhTitle}
+              {zhTitle}
             </h3>
-            {item.url && <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
           </div>
           {item.content && <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.content}</p>}
           <div className="flex items-center gap-3 flex-wrap">

@@ -710,6 +710,92 @@ const KIMI_API_KEY = process.env.KIMI_API_KEY || 'sk-5lKs7u9Q5FTWUpRd8SHneXmNt9E
 const KIMI_API_URL = 'https://api.moonshot.cn/v1/chat/completions'
 const KIMI_MODEL = 'moonshot-v1-8k'
 
+/**
+ * 使用 Kimi API 翻译新闻全文
+ * @param content 原文内容（英文）
+ * @param title 可选标题，用于上下文
+ * @returns 中文翻译结果
+ */
+export async function translateArticleContent(
+  content: string,
+  title?: string
+): Promise<{ translated: string; original: string }> {
+  if (!content || content.trim().length === 0) {
+    return { translated: content, original: content }
+  }
+
+  // 如果内容已含大量中文，直接返回
+  if (/[\u4e00-\u9fa5]/.test(content) && content.match(/[\u4e00-\u9fa5]/g)?.length! > content.length * 0.3) {
+    return { translated: content, original: content }
+  }
+
+  // 截取前 4000 字符（8k 模型限制 + prompt开销）
+  const truncated = content.length > 4000 ? content.substring(0, 4000) + '...[原文有截断]' : content
+  const context = title ? `新闻标题：${title}\n\n` : ''
+
+  const prompt = `你是一个专业的财经新闻翻译。请将以下英文财经新闻翻译成流畅自然的中文，符合中国投资者阅读习惯。
+
+要求：
+- 直译为主，语义准确，专业流畅
+- 保留公司英文名称（如 NIO、Apple、Microsoft）
+- 保留关键数据、百分比、金额、日期
+- 如有专业术语给出通用译法
+- 分段清晰，保持原文结构
+
+${context}英文原文：
+${truncated}
+
+请输出翻译后的完整中文内容（只需输出翻译，无需其他说明）：`
+
+  try {
+    const response = await fetch(KIMI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${KIMI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: KIMI_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.3,
+        max_tokens: 3000
+      }),
+      signal: AbortSignal.timeout(60000)
+    })
+
+    if (!response.ok) {
+      console.error('[Kimi全文翻译] API 错误:', response.status)
+      return { translated: content, original: content }
+    }
+
+    const data = await response.json()
+    const translated = data.choices?.[0]?.message?.content || content
+    return { translated: translated.trim(), original: content }
+  } catch (err: any) {
+    console.error('[Kimi全文翻译] 请求失败:', err.message)
+    return { translated: content, original: content }
+  }
+}
+
+/**
+ * 从 HTML 中提取正文内容（简单文本提取）
+ */
+export function extractArticleText(html: string): string {
+  if (!html) return ''
+  // 移除脚本和样式
+  let text = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+    .replace(/<noscript[^>]*>[\s\S]*?<\/noscript>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+  // 移除 HTML 标签
+  text = text.replace(/<[^>]+>/g, ' ')
+  // 清理多余空格
+  text = text.replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+  text = text.replace(/\s+/g, ' ').trim()
+  return text
+}
+
 export interface TranslatedNewsItem extends NewsItem {
   titleZh?: string
 }

@@ -88,24 +88,22 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // 翻译标题为中文（只翻译前3条，默认展示量，10个标的并行请求节省时间）
+      // 翻译全部标题为中文（并行：每个标的独立翻译节省总时间）
       try {
         const symKeys = Object.keys(newsResults.bySymbol)
         const symTranslations = await Promise.all(
           symKeys.map(async sym => {
-            const top3 = newsResults.bySymbol[sym].slice(0, 3)
-            const translated = await translateNewsTitles(top3)
+            // 翻译该标的所有新闻标题
+            const allItems = newsResults.bySymbol[sym]
+            const translated = await translateNewsTitles(allItems)
             return { sym, translated }
           })
         )
-        // 合并翻译结果
+        // 合并翻译结果（全量替换，保持顺序）
         for (const { sym, translated } of symTranslations) {
-          newsResults.bySymbol[sym] = [
-            ...translated,
-            ...newsResults.bySymbol[sym].slice(3)
-          ]
+          newsResults.bySymbol[sym] = translated
         }
-        // 总新闻列表也只翻译前30条
+        // 总新闻列表也翻译全部（最多30条，避免token溢出）
         const topTotal = newsResults.news.slice(0, 30)
         const translatedTotal = await translateNewsTitles(topTotal)
         newsResults.news = [

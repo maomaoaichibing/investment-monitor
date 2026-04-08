@@ -702,3 +702,109 @@ export function ruleBasedSentiment(text: string): { sentiment: 'positive' | 'neg
   
   return { sentiment, score: Math.round(normalizedScore * 100) / 100 }
 }
+
+// ============== Kimi 翻译服务 ==============
+
+const KIMI_API_KEY = process.env.KIMI_API_KEY || 'sk-5lKs7u9Q5FTWUpRd8SHneXmNt9ER51puxbyv7rY5I5YjY3oX'
+const KIMI_API_URL = 'https://api.moonshot.cn/v1/chat/completions'
+const KIMI_MODEL = 'moonshot-v1-8k'
+
+export interface TranslatedNewsItem extends NewsItem {
+  titleZh?: string
+}
+
+/**
+ * 使用 Kimi API 批量翻译新闻标题
+ * @param items 带情感分析结果的新闻列表
+ * @returns 添加了 titleZh 字段的新闻列表
+ */
+export async function translateNewsTitles(items: NewsItem[]): Promise<TranslatedNewsItem[]> {
+  if (!items || items.length === 0) return items as TranslatedNewsItem[]
+
+  // 收集所有需要翻译的标题（过滤掉太短或含中文的）
+  const toTranslate = items
+    .filter(item => item.title && item.title.length > 10 && !/[\u4e00-\u9fa5]/.test(item.title))
+    .slice(0, 30) // 最多翻译30条，避免 token 溢出
+
+  if (toTranslate.length === 0) {
+    return items as TranslatedNewsItem[]
+  }
+
+  // 构建批量翻译 prompt
+  const lines = toTranslate.map((item, i) => `${i + 1}. ${item.title}`).join('\n')
+  const prompt = `你是一个专业的财经新闻翻译。请将以下英文财经新闻标题翻译成中文，保持简洁专业，符合中国投资者阅读习惯。
+
+要求：
+- 直译为主，简洁准确
+- 保留公司英文名称（如 NIO、Apple）
+- 保留关键数据（如百分比、金额）
+- 只输出 JSON 数组格式，不要其他内容
+
+标题列表：
+${lines}
+
+输出格式（JSON数组）：
+[{"index":1,"zh":"翻译后的中文标题"},{"index":2,"zh":"..."}]`
+
+  try {
+    const response = await fetch(KIMI_API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${KIMI_API_KEY}`
+      },
+      body: JSON.stringify({
+        model: KIMI_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 2000
+      }),
+      signal: AbortSignal.timeout(30000)
+    })
+
+    if (!response.ok) {
+      console.error('[Kimi翻译] API 错误:', response.status)
+      return items as TranslatedNewsItem[]
+    }
+
+    const data = await response.json()
+    const rawContent = data.choices?.[0]?.message?.content || ''
+
+    // 解析 JSON
+    let translations: Array<{ index: number; zh: string }> = []
+    try {
+      // 尝试提取 JSON 部分
+      const jsonMatch = rawContent.match(/\[[\s\S]*?\]/)
+      if (jsonMatch) {
+        translations = JSON.parse(jsonMatch[0])
+      }
+    } catch (e) {
+      console.error('[Kimi翻译] JSON 解析失败:', rawContent.substring(0, 100))
+    }
+
+    // 构建 index → 中文标题 的映射
+    const zhMap = new Map<number, string>()
+    for (const t of translations) {
+      if (t.index && t.zh) {
+        zhMap.set(t.index, t.zh)
+      }
+    }
+
+    // 合并翻译结果
+    return items.map(item => {
+      // 找这个 item 在 toTranslate 中的索引
+      const idx = toTranslate.findIndex(t => t.title === item.title)
+      if (idx >= 0 && zhMap.has(idx + 1)) {
+        return { ...item, titleZh: zhMap.get(idx + 1) } as TranslatedNewsItem
+      }
+      // 如果已经是中文，不翻译
+      if (/[\u4e00-\u9fa5]/.test(item.title)) {
+        return { ...item, titleZh: item.title } as TranslatedNewsItem
+      }
+      return item as TranslatedNewsItem
+    })
+  } catch (err: any) {
+    console.error('[Kimi翻译] 请求失败:', err.message)
+    return items as TranslatedNewsItem[]
+  }
+}

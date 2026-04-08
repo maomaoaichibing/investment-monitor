@@ -8,12 +8,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { TrendingUp, TrendingDown, Minus, RefreshCw, ExternalLink, Newspaper, Bell, Clock, Globe } from 'lucide-react'
 
 interface NewsItem {
-  symbol: string; title: string; content: string; url?: string
+  symbol: string; title: string; titleZh?: string; content: string; url?: string
   source: string; publishedAt: string; sentiment?: string; sentimentScore?: number
   tags?: string[]; newsSource?: string; alertCount?: number; eventTime?: string
 }
 interface StoredItem {
-  id: string; symbol: string; title: string; content: string; eventTime: string
+  id: string; symbol: string; title: string; titleZh?: string; content: string; eventTime: string
   source: string; url?: string; newsSource?: string; sentiment?: string
   sentimentScore?: number; tags?: string[]; alertCount?: number
 }
@@ -42,14 +42,21 @@ function NewsCard({ item }: { item: NewsItem | StoredItem }) {
   const sc = sentConf(item.sentiment, item.sentimentScore)
   const Icon = sc.icon
   const t = (item as any).eventTime || (item as any).publishedAt || new Date().toISOString()
+  const zhTitle = (item as any).titleZh || item.title
+  const enTitle = (item as any).titleZh ? item.title : null
   return (
     <div className={`rounded-lg border p-4 hover:shadow-sm transition ${sc.icon === TrendingUp ? 'bg-green-50/50 border-green-100' : sc.icon === TrendingDown ? 'bg-red-50/50 border-red-100' : 'bg-white'}`}>
       <div className="flex gap-3">
         <Icon className={`h-5 w-5 flex-shrink-0 mt-0.5 ${sc.color}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2 mb-1">
-            <h3 className="font-medium text-sm leading-snug line-clamp-2">
-              {item.url ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary">{item.title}</a> : item.title}
+            <h3
+              className="font-medium text-sm leading-snug line-clamp-2"
+              title={enTitle || ''}
+            >
+              {item.url
+                ? <a href={item.url} target="_blank" rel="noopener noreferrer" className="hover:text-primary">{zhTitle}</a>
+                : zhTitle}
             </h3>
             {item.url && <ExternalLink className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
           </div>

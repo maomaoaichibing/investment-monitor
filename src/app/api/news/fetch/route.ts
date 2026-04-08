@@ -13,7 +13,8 @@ import {
   fetchNewsForSymbol,
   fetchNewsForAllPositions,
   saveNewsToEvents,
-  ruleBasedSentiment
+  ruleBasedSentiment,
+  translateNewsTitles
 } from '@/server/services/newsService'
 import { db } from '@/lib/db'
 import { alertService } from '@/server/services/alertService'
@@ -46,7 +47,14 @@ export async function POST(request: NextRequest) {
           return { ...item, sentiment, sentimentScore: score }
         })
       }
-      
+
+      // 翻译标题为中文
+      try {
+        newsWithSentiment = await translateNewsTitles(newsWithSentiment)
+      } catch (e) {
+        console.error('[API/news/fetch] 翻译失败:', e)
+      }
+
       // 存入数据库
       if (saveToDb) {
         const { saved, skipped, errors } = await saveNewsToEvents(newsWithSentiment)
@@ -79,7 +87,17 @@ export async function POST(request: NextRequest) {
           return { ...item, sentiment, sentimentScore: score }
         })
       }
-      
+
+      // 翻译标题为中文（每个标的分别翻译，避免单次 prompt 过长）
+      try {
+        for (const sym of Object.keys(newsResults.bySymbol)) {
+          newsResults.bySymbol[sym] = await translateNewsTitles(newsResults.bySymbol[sym])
+        }
+        newsResults.news = await translateNewsTitles(newsResults.news)
+      } catch (e) {
+        console.error('[API/news/fetch] 翻译失败:', e)
+      }
+
       // 存入数据库
       if (saveToDb) {
         const { saved, skipped, errors } = await saveNewsToEvents(newsResults.news)

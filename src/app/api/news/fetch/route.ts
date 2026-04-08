@@ -88,14 +88,20 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // 翻译标题为中文（只翻译前3条，默认展示量，避免超时）
+      // 翻译标题为中文（只翻译前3条，默认展示量，10个标的并行请求节省时间）
       try {
-        for (const sym of Object.keys(newsResults.bySymbol)) {
-          const top3 = newsResults.bySymbol[sym].slice(0, 3)
-          const translated3 = await translateNewsTitles(top3)
-          // 合并：前3条有翻译，其余保持英文
+        const symKeys = Object.keys(newsResults.bySymbol)
+        const symTranslations = await Promise.all(
+          symKeys.map(async sym => {
+            const top3 = newsResults.bySymbol[sym].slice(0, 3)
+            const translated = await translateNewsTitles(top3)
+            return { sym, translated }
+          })
+        )
+        // 合并翻译结果
+        for (const { sym, translated } of symTranslations) {
           newsResults.bySymbol[sym] = [
-            ...translated3,
+            ...translated,
             ...newsResults.bySymbol[sym].slice(3)
           ]
         }

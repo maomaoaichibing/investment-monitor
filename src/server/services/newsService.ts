@@ -171,18 +171,31 @@ function formatDate(dateStr: string): string {
   }
 }
 
+// ============== 工具函数 ==============
+
+/**
+ * 转换港股代码为Yahoo Finance格式
+ * 港股6位代码: 00700 → 0700.HK（去掉前导0取后4位）
+ * 实测验证: 0700.HK 返回腾讯真实新闻，00700.HK 返回0条
+ */
+function convertToYahooHKCode(symbol: string): string {
+  // 去掉前导0，取最后4位
+  const digits = symbol.replace(/^0+/, '') || '0'
+  const last4 = digits.slice(-4).padStart(4, '0')
+  return `${last4}.HK`
+}
+
 // ============== 数据源 1: Yahoo Finance RSS ==============
 
 async function fetchFromYahooRSS(symbol: string, market: string): Promise<NewsResult> {
   try {
-    // Yahoo Finance RSS feed
     let rssSymbol: string
     
     if (market === 'US') {
       rssSymbol = symbol.toUpperCase()
     } else if (market === 'HK') {
-      // Yahoo HK codes: 0700.HK for 腾讯
-      rssSymbol = `${symbol}.HK`
+      // 关键修复：必须用4位代码（00700→0700.HK），6位代码Yahoo返回0条
+      rssSymbol = convertToYahooHKCode(symbol)
     } else {
       // A股用 .SS 或 .SZ
       rssSymbol = symbol.startsWith('6') ? `${symbol}.SS` : `${symbol}.SZ`
@@ -422,10 +435,11 @@ export async function fetchNewsForSymbol(
       { fn: fetchFromSinaNews, name: '新浪财经' }
     )
   } else if (market === 'HK') {
+    // 港股优先 Yahoo RSS（支持4位代码如0700.HK），新浪兜底
     sources.push(
+      { fn: fetchFromYahooRSS, name: 'Yahoo RSS' },
       { fn: fetchFromSinaNews, name: '新浪财经' },
-      { fn: fetchFromYahooSearch, name: 'Yahoo Search' },
-      { fn: fetchFromYahooRSS, name: 'Yahoo RSS' }
+      { fn: fetchFromYahooSearch, name: 'Yahoo Search' }
     )
   } else {
     // A股：新浪财经 + 东方财富
@@ -501,40 +515,39 @@ export async function fetchNewsForAllPositions(
     }
   }
   
-  // 如果没有任何股票新闻，尝试获取新浪财经综合新闻
+  // 如果没有任何股票新闻，尝试新浪财经并严格匹配持仓标的
+  // 警告：新浪 lid=2516 的 k= 参数可能不工作，必须做标题内容匹配
   if (allNews.length === 0 && uniquePositions.length > 0) {
-    console.log('[NewsService] 所有持仓新闻获取失败，尝试新浪财经综合新闻...')
+    console.log('[NewsService] 所有持仓新闻获取失败，尝试新浪财经标题匹配...')
     const sinaResult = await fetchFromSinaNews()
     if (sinaResult.success && sinaResult.data) {
-      // 匹配持仓股票
+      // 严格匹配：新闻标题/摘要中必须包含持仓代码
       const symbolCodes = uniquePositions.map(p => p.symbol.toLowerCase())
       const matchedNews = sinaResult.data.filter(item => {
-        const text = (item.title + item.content).toLowerCase()
+        const text = (item.title + ' ' + (item.content || '')).toLowerCase()
         return symbolCodes.some(s => text.includes(s.toLowerCase()))
       })
       
+      let matchCount = 0
       for (const item of matchedNews) {
         const matchedSymbol = uniquePositions.find(p => 
-          (item.title + item.content).toLowerCase().includes(p.symbol.toLowerCase())
+          (item.title + ' ' + (item.content || '')).toLowerCase().includes(p.symbol.toLowerCase())
         )
         if (matchedSymbol) {
           item.symbol = matchedSymbol.symbol
+          allNews.push(item)
+          matchCount++
         }
-        allNews.push(item)
       }
       
-      // 即使没有匹配，也添加前5条综合新闻
-      if (allNews.length === 0 && sinaResult.data.length > 0) {
-        const symbols = uniquePositions.map(p => p.symbol)
-        const generalNews = sinaResult.data.slice(0, 5).map(item => ({
-          ...item,
-          symbol: `财经(${symbols.join(',')})`
-        }))
-        allNews.push(...generalNews)
-      }
-      
-      if (allNews.length > 0) {
-        console.log(`[NewsService] 新浪财经补充新闻 ${allNews.length} 条`)
+      if (matchCount > 0) {
+        console.log(`[NewsService] 新浪标题匹配: ${matchCount} 条精确匹配新闻`)
+      } else {
+        console.log(`[NewsService] 新浪无持仓匹配，HK/港股新闻源受限（Yahoo RSS HK格式仅支持4位代码）`)
+        // 告知前端哪些标的无法获取新闻
+        for (const sym of uniquePositions) {
+          errors[sym.symbol] = '新闻源暂不支持该交易所，请查看Yahoo Finance获取'
+        }
       }
     }
   }

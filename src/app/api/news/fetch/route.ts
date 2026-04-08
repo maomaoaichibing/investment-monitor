@@ -88,12 +88,24 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      // 翻译标题为中文（每个标的分别翻译，避免单次 prompt 过长）
+      // 翻译标题为中文（只翻译前3条，默认展示量，避免超时）
       try {
         for (const sym of Object.keys(newsResults.bySymbol)) {
-          newsResults.bySymbol[sym] = await translateNewsTitles(newsResults.bySymbol[sym])
+          const top3 = newsResults.bySymbol[sym].slice(0, 3)
+          const translated3 = await translateNewsTitles(top3)
+          // 合并：前3条有翻译，其余保持英文
+          newsResults.bySymbol[sym] = [
+            ...translated3,
+            ...newsResults.bySymbol[sym].slice(3)
+          ]
         }
-        newsResults.news = await translateNewsTitles(newsResults.news)
+        // 总新闻列表也只翻译前30条
+        const topTotal = newsResults.news.slice(0, 30)
+        const translatedTotal = await translateNewsTitles(topTotal)
+        newsResults.news = [
+          ...translatedTotal,
+          ...newsResults.news.slice(30)
+        ]
       } catch (e) {
         console.error('[API/news/fetch] 翻译失败:', e)
       }

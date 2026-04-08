@@ -15,6 +15,7 @@ import {
   PieChart,
   TestTube,
   History,
+  Newspaper,
 } from 'lucide-react'
 
 // MobileMenu 是客户端组件，需要 useState
@@ -26,6 +27,7 @@ function MobileMenu({ unreadAlertCount }: { unreadAlertCount: number }) {
     { href: '/portfolios', label: '投资组合', icon: 'Briefcase' },
     { href: '/alerts', label: '提醒', icon: 'AlertTriangle', badge: unreadAlertCount },
     { href: '/theses', label: '投资论题', icon: 'PieChart' },
+    { href: '/news', label: '舆情', icon: 'Newspaper' },
     { href: '/test-suite', label: '系统测试', icon: 'TestTube' },
     { href: '/changelog', label: '版本管理', icon: 'History' },
   ]
@@ -134,6 +136,10 @@ export function SiteHeader({ unreadAlertCount = 0 }: SiteHeaderProps) {
           </Link>
           <Link href="/theses" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             投资论题
+          </Link>
+          <Link href="/news" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+            <Newspaper className="h-3.5 w-3.5" />
+            舆情
           </Link>
           <Link href="/test-suite" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
             <TestTube className="h-3.5 w-3.5" />

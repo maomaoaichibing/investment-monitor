@@ -1,6 +1,19 @@
 # Alert Impact Analyzer - 执行记录
 
-## 最新执行 (2026-04-08 07:12):
+## 最新执行 (2026-04-08 16:01):
+
+**状态**: ✅ 成功
+
+**分析结果**:
+- 未读 alerts: 2个（蔚来urgent, 美光科技important）
+- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
+- 美光科技(MU): neutral, 影响分 3, 健康度 80→75 (-5), intact
+
+**API**: http://localhost:4000/api/alerts/[id]/analyze
+
+---
+
+## 执行记录 (2026-04-08 07:12):
 
 **状态**: ✅ 成功
 

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { TrendingUp, TrendingDown, Minus, RefreshCw, Newspaper, Bell, Clock, Globe } from 'lucide-react'
+import { TrendingUp, TrendingDown, Minus, RefreshCw, Newspaper, Bell, Clock, Globe, Database, Zap } from 'lucide-react'
 
 interface NewsItem {
   symbol: string; title: string; titleZh?: string; content: string; url?: string
@@ -46,14 +46,18 @@ function NewsCard({ item }: { item: NewsItem | StoredItem }) {
   const t = (item as any).eventTime || (item as any).publishedAt || new Date().toISOString()
   const zhTitle = (item as any).titleZh || item.title
   const enTitle = (item as any).titleZh ? item.title : null
+  // 数据库存储的 item 有 id（StoredItem）
+  const itemId = (item as any).id
 
   function goDetail() {
-    // 导航到详情中转页，传递必要数据
     const q = new URLSearchParams()
+    // 优先传数据库 ID（详情页会从 DB 读取完整内容）
+    if (itemId) q.set('eventId', itemId)
+    // 标的和标题用于后备查询
     if (item.symbol) q.set('symbol', item.symbol)
     if (zhTitle !== item.title) q.set('titleZh', zhTitle)
     if (item.title) q.set('title', item.title)
-    if (item.content) q.set('content', item.content)
+    // URL/情感等用于后备
     if (item.url) q.set('url', item.url)
     if (item.source) q.set('source', item.source)
     if ((item as any).newsSource) q.set('newsSource', (item as any).newsSource)
@@ -130,11 +134,33 @@ export default function NewsPage() {
   const [fetching, setFetching] = useState(false)
   const [tab, setTab] = useState<'live' | 'stored'>('live')
   const [result, setResult] = useState<any>(null)
+  const [dataSource, setDataSource] = useState<'cache' | 'fetch' | null>(null)
 
-  useEffect(() => { loadStored() }, [])
+  // 页面加载时：优先从缓存读取（GET，10分钟有效）
+  useEffect(() => { loadInitial() }, [])
+
+  async function loadInitial() {
+    setLoading(true)
+    try {
+      // 1. 先尝试读缓存（GET /api/news/fetch）
+      const cached = await fetch('/api/news/fetch')
+      const cachedData = await cached.json()
+      if (cachedData.success && cachedData.data?.bySymbol) {
+        setLive(cachedData.data.bySymbol)
+        setResult(cachedData.data)
+        setDataSource(cachedData.source === 'cache' ? 'cache' : 'fetch')
+        // 缓存命中则无需再加载历史
+        setLoading(false)
+        return
+      }
+    } catch (e) {
+      console.warn('[news page] 缓存读取失败:', e)
+    }
+    // 2. 缓存未命中，加载历史数据
+    await loadStored()
+  }
 
   async function loadStored() {
-    setLoading(true)
     try {
       const r = await fetch('/api/news?limit=50')
       const d = await r.json()
@@ -146,10 +172,15 @@ export default function NewsPage() {
     setFetching(true)
     setResult(null)
     try {
-      const r = await fetch('/api/news/fetch', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) })
+      const r = await fetch('/api/news/fetch?refresh=true', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({})
+      })
       const d = await r.json()
       setResult(d.data)
       if (d.data?.bySymbol) setLive(d.data.bySymbol)
+      setDataSource('fetch')
       if (d.data?.saved) await loadStored()
     } finally { setFetching(false) }
   }
@@ -176,7 +207,18 @@ export default function NewsPage() {
             </Button>
           </div>
           {result && (
-            <div className="flex gap-4 mt-3 text-sm">
+            <div className="flex gap-4 mt-3 text-sm flex-wrap">
+              {/* 数据来源标记 */}
+              {dataSource === 'cache' && (
+                <Badge variant="outline" className="text-xs text-green-600 border-green-200 bg-green-50">
+                  <Database className="h-3 w-3 mr-1" />来自缓存
+                </Badge>
+              )}
+              {dataSource === 'fetch' && (
+                <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">
+                  <Zap className="h-3 w-3 mr-1" />刚刚抓取
+                </Badge>
+              )}
               <span>实时新闻: <b className="text-primary">{totalNews}</b> 条</span>
               <span>覆盖: <b>{allSymbols.length}</b> 只</span>
               {result.saved !== undefined && <span>存入: <b>{result.saved}</b> 条</span>}

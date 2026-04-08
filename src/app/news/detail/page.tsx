@@ -8,10 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   TrendingUp, TrendingDown, Minus, ArrowLeft, ExternalLink,
-  Globe, Clock, ChevronRight, Loader2, AlertCircle
+  Globe, Clock, ChevronRight, Loader2, AlertCircle, FileText,
+  Zap, Database, Wifi, CheckCircle2, RefreshCw
 } from 'lucide-react'
 
-interface NewsData {
+interface NewsDetail {
+  id?: string
   symbol?: string
   title?: string
   titleZh?: string
@@ -23,6 +25,8 @@ interface NewsData {
   eventTime?: string
   sentiment?: string
   sentimentScore?: number
+  tags?: string[]
+  isFromRss?: boolean
 }
 
 function sentConf(s?: string, sc?: number) {
@@ -39,21 +43,53 @@ function sentConf(s?: string, sc?: number) {
 function timeStr(d?: string) {
   if (!d) return ''
   try {
-    return new Date(d).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+    return new Date(d).toLocaleString('zh-CN', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit'
+    })
   } catch { return d }
+}
+
+function ContentBlock({ label, content, icon: Icon, className = '' }: {
+  label: string; content: string; icon: any; className?: string
+}) {
+  const paragraphs = content.split('\n').filter(l => l.trim())
+  if (paragraphs.length === 0) return null
+  return (
+    <div className={`mb-4 ${className}`}>
+      <div className="flex items-center gap-2 mb-3 pb-2 border-b">
+        <Icon className="h-4 w-4 text-primary" />
+        <h3 className="text-sm font-semibold text-primary">{label}</h3>
+      </div>
+      <div className="space-y-2">
+        {paragraphs.map((line, i) => (
+          <p key={i} className="text-sm leading-relaxed text-foreground/90 whitespace-pre-wrap">
+            {line.trim()}
+          </p>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 function NewsDetailContent() {
   const params = useSearchParams()
   const router = useRouter()
-  const [translating, setTranslating] = useState(true)
-  const [translatedContent, setTranslatedContent] = useState<string>('')
-  const [originalContent, setOriginalContent] = useState<string>('')
-  const [fetchError, setFetchError] = useState('')
-  const [transError, setTransError] = useState('')
 
-  // 从 URL 参数解析新闻数据
-  const rawData: NewsData = {
+  // 状态
+  const [news, setNews] = useState<NewsDetail | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
+  const [translating, setTranslating] = useState(false)
+  const [translatedContent, setTranslatedContent] = useState<string>('')
+  const [transError, setTransError] = useState('')
+  const [contentFetchError, setContentFetchError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+  const [fetchedFullContent, setFetchedFullContent] = useState<string>('')
+  const [source, setSource] = useState<'db' | 'url' | 'param'>('db')
+
+  // 解析 URL 参数（后备）
+  const fallbackData: NewsDetail = {
     symbol: params.get('symbol') || undefined,
     title: params.get('title') ? decodeURIComponent(params.get('title')!) : undefined,
     titleZh: params.get('titleZh') ? decodeURIComponent(params.get('titleZh')!) : undefined,
@@ -62,78 +98,145 @@ function NewsDetailContent() {
     source: params.get('source') ? decodeURIComponent(params.get('source')!) : undefined,
     newsSource: params.get('newsSource') ? decodeURIComponent(params.get('newsSource')!) : undefined,
     publishedAt: params.get('time') || undefined,
-    sentiment: params.get('sentiment') as any || undefined,
+    sentiment: (params.get('sentiment') as any) || undefined,
     sentimentScore: params.get('score') ? parseFloat(params.get('score')!) : undefined,
   }
 
-  const displayTitle = rawData.titleZh || rawData.title || '新闻详情'
-  const displayTime = rawData.eventTime || rawData.publishedAt || ''
-  const sc = sentConf(rawData.sentiment, rawData.sentimentScore)
-  const Icon = sc.icon
+  // 从数据库加载
+  async function loadFromDb() {
+    const eventId = params.get('eventId')
+    const symbol = params.get('symbol')
+    const title = params.get('title')
 
-  useEffect(() => {
-    async function translate() {
-      setTranslating(true)
-      setTransError('')
-      setFetchError('')
+    if (eventId) {
+      const r = await fetch(`/api/news/event?id=${encodeURIComponent(eventId)}`)
+      const d = await r.json()
+      if (d.success) {
+        setNews(d.data)
+        setSource('db')
+        return true
+      }
+    }
+    if (symbol && title) {
+      const r = await fetch(`/api/news/event?symbol=${encodeURIComponent(symbol)}&title=${encodeURIComponent(title)}`)
+      const d = await r.json()
+      if (d.success) {
+        setNews(d.data)
+        setSource('db')
+        return true
+      }
+    }
+    return false
+  }
 
-      // 优先使用摘要内容翻译
-      if (rawData.content && rawData.content.trim().length > 0) {
-        setOriginalContent(rawData.content)
-        try {
-          const res = await fetch('/api/news/translate-content', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              content: rawData.content,
-              title: rawData.titleZh || rawData.title
-            })
-          })
-          const d = await res.json()
-          if (d.success) {
-            setTranslatedContent(d.data.translated)
-          } else {
-            setTransError(d.error || '翻译失败')
-            setTranslatedContent(rawData.content)
-          }
-        } catch (e: any) {
-          setTransError('翻译请求失败：' + e.message)
-          setTranslatedContent(rawData.content)
-        }
-      } else if (rawData.url) {
-        // 无摘要，通过URL抓取并翻译全文
-        try {
-          const res = await fetch('/api/news/translate-content', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              url: rawData.url,
-              title: rawData.titleZh || rawData.title
-            })
-          })
-          const d = await res.json()
-          if (d.success) {
-            setOriginalContent(d.data.original)
-            setTranslatedContent(d.data.translated)
-          } else {
-            setFetchError(d.error || '抓取失败')
-            // 降级：显示标题作为内容
-            setTranslatedContent(`（无法获取文章全文）\n\n原文标题：${rawData.title || '无标题'}`)
-          }
-        } catch (e: any) {
-          setFetchError('抓取请求失败：' + e.message)
-          setTranslatedContent(`（无法获取文章内容）\n\n原文标题：${rawData.title || '无标题'}`)
-        }
+  // 翻译内容
+  async function doTranslate(content: string, title?: string) {
+    if (!content || content.trim().length < 10) return
+    setTranslating(true)
+    setTransError('')
+    try {
+      const r = await fetch('/api/news/translate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, title: title || news?.titleZh || news?.title })
+      })
+      const d = await r.json()
+      if (d.success) {
+        setTranslatedContent(d.data.translated)
       } else {
-        setTranslating(false)
-        setTranslatedContent('（无内容）')
+        setTransError(d.error || '翻译失败')
+        setTranslatedContent(content)
+      }
+    } catch (e: any) {
+      setTransError('翻译请求失败：' + e.message)
+      setTranslatedContent(content)
+    }
+    setTranslating(false)
+  }
+
+  // 从原文 URL 抓取全文
+  async function fetchFullContent() {
+    if (!news?.url) return
+    setRefreshing(true)
+    setContentFetchError('')
+    try {
+      const r = await fetch('/api/news/translate-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: news.url, title: news.titleZh || news.title })
+      })
+      const d = await r.json()
+      if (d.success && d.data.translated) {
+        setFetchedFullContent(d.data.translated)
+        setTranslatedContent(d.data.translated)
+        // 更新源标记
+        setSource('url')
+      } else {
+        setContentFetchError(d.error || '无法获取原文内容')
+      }
+    } catch (e: any) {
+      setContentFetchError('抓取失败：' + e.message)
+    }
+    setRefreshing(false)
+  }
+
+  // 主加载逻辑
+  useEffect(() => {
+    async function init() {
+      setLoading(true)
+      setLoadError('')
+      setTranslatedContent('')
+      setFetchedFullContent('')
+
+      // 1. 优先从数据库加载
+      const found = await loadFromDb()
+
+      if (!found) {
+        // 2. 回退到 URL 参数
+        setNews(fallbackData)
+        setSource('param')
+        if (fallbackData.content) {
+          await doTranslate(fallbackData.content, fallbackData.titleZh || fallbackData.title)
+        }
       }
 
-      setTranslating(false)
+      setLoading(false)
     }
 
-    translate()
+    init()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // 翻译数据库内容（当 news 更新后）
+  useEffect(() => {
+    if (news?.content && source === 'db') {
+      doTranslate(news.content, news.titleZh || news.title)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [news?.id, news?.content])
+
+  const displayNews = news || fallbackData
+  const displayTitle = displayNews.titleZh || displayNews.title || '新闻详情'
+  const enTitle = displayNews.titleZh ? displayNews.title : null
+  const displayTime = displayNews.eventTime || displayNews.publishedAt || ''
+  const sc = sentConf(displayNews.sentiment, displayNews.sentimentScore)
+  const Icon = sc.icon
+
+  // 判断内容质量
+  const rawContentLen = (displayNews.content || '').length
+  const isShortRss = rawContentLen > 0 && rawContentLen < 300
+  const hasFullContent = fetchedFullContent.length > 0
+  const showRefreshButton = !hasFullContent && !!displayNews.url && !contentFetchError
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-3xl">
+        <Skeleton className="h-6 w-40 mb-6" />
+        <Skeleton className="h-48 w-full mb-4" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -147,9 +250,16 @@ function NewsDetailContent() {
             <div className="flex-1 min-w-0">
               <h1 className="text-base font-semibold truncate">{displayTitle}</h1>
             </div>
-            {rawData.url && (
+            {/* 缓存来源标记 */}
+            <Badge variant="outline" className="text-xs">
+              {source === 'db' && <Database className="h-3 w-3 mr-1 inline text-green-600" />}
+              {source === 'url' && <Wifi className="h-3 w-3 mr-1 inline text-blue-600" />}
+              {source === 'param' && <FileText className="h-3 w-3 mr-1 inline text-gray-400" />}
+              {source === 'db' ? '数据库' : source === 'url' ? '已抓全文' : 'URL参数'}
+            </Badge>
+            {displayNews.url && (
               <Button variant="outline" size="sm" asChild>
-                <a href={rawData.url} target="_blank" rel="noopener noreferrer">
+                <a href={displayNews.url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-3.5 w-3.5 mr-1" />原文
                 </a>
               </Button>
@@ -160,33 +270,33 @@ function NewsDetailContent() {
 
       <div className="container mx-auto px-4 py-6 max-w-3xl">
         {/* 元信息卡片 */}
-        <Card className="mb-6 border-l-4"
+        <Card className="mb-5 border-l-4"
           style={{
             borderLeftColor: sc.icon === TrendingUp ? '#22c55e' : sc.icon === TrendingDown ? '#ef4444' : '#9ca3af'
           }}>
           <CardContent className="pt-4 pb-4">
-            {/* 标题 */}
-            <h2 className="text-xl font-bold mb-4 leading-snug">
-              {rawData.titleZh && rawData.title && (
-                <span className="block text-sm font-normal text-muted-foreground mb-1">
-                  原文：{rawData.title}
+            {/* 中文标题 */}
+            <h2 className="text-xl font-bold mb-3 leading-snug">
+              {enTitle && (
+                <span className="block text-xs font-normal text-muted-foreground mb-1">
+                  原文：{enTitle}
                 </span>
               )}
               {displayTitle}
             </h2>
 
             {/* 标签行 */}
-            <div className="flex items-center gap-3 flex-wrap">
-              {rawData.symbol && (
-                <Badge variant="outline" className="font-mono text-xs">{rawData.symbol}</Badge>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {displayNews.symbol && (
+                <Badge variant="outline" className="font-mono text-xs font-bold">{displayNews.symbol}</Badge>
               )}
               <Badge className={`text-xs ${sc.badge}`}>
                 <Icon className="h-3 w-3 mr-1" />{sc.label}
               </Badge>
-              {(rawData.newsSource || rawData.source) && (
+              {(displayNews.newsSource || displayNews.source) && (
                 <span className="text-xs text-muted-foreground flex items-center gap-1">
                   <Globe className="h-3 w-3" />
-                  {rawData.newsSource || rawData.source}
+                  {displayNews.newsSource || displayNews.source}
                 </span>
               )}
               {displayTime && (
@@ -195,83 +305,128 @@ function NewsDetailContent() {
                   {timeStr(displayTime)}
                 </span>
               )}
-              {translating && (
-                <Badge variant="outline" className="text-xs text-blue-600 border-blue-200 bg-blue-50">
-                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />翻译中...
-                </Badge>
-              )}
-              {!translating && !transError && !fetchError && (
-                <Badge variant="outline" className="text-xs text-green-600 border-green-200 bg-green-50">
-                  ✓ 已翻译
+              {isShortRss && (
+                <Badge variant="outline" className="text-xs text-amber-600 border-amber-200 bg-amber-50">
+                  ⚡ RSS摘要（较短）
                 </Badge>
               )}
             </div>
+
+            {/* 内容来源说明 */}
+            {source === 'db' && rawContentLen > 0 && (
+              <div className="mt-2.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+                <span>内容来自数据库 · 共 {rawContentLen} 字符</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
-        {/* 中文正文 */}
-        <Card className="mb-6">
+        {/* 内容区域 */}
+        <Card className="mb-5">
           <CardContent className="pt-5 pb-5">
-            <div className="flex items-center gap-2 mb-4 pb-3 border-b">
-              <h3 className="text-sm font-semibold text-primary">📖 中文全文</h3>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-
-            {translating ? (
-              <div className="space-y-3">
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-                <Skeleton className="h-4 w-4/6" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-5/6" />
-                <Skeleton className="h-4 w-2/3" />
-                <div className="flex items-center gap-2 mt-4 pt-3 border-t">
+            {/* 加载状态 */}
+            {translating && (
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm text-muted-foreground">正在翻译全文，请稍候...</span>
+                  <h3 className="text-sm font-semibold text-primary">正在翻译全文...</h3>
                 </div>
+                {[1,2,3,4,5,6,7,8].map(i => (
+                  <Skeleton key={i} className="h-4 w-full" style={{ width: `${100 - i * 3}%` }} />
+                ))}
               </div>
-            ) : (
-              <div className="prose prose-sm max-w-none">
-                <div className="text-sm leading-relaxed whitespace-pre-wrap text-foreground">
-                  {translatedContent.split('\n').map((line, i) => (
-                    line.trim() ? (
-                      <p key={i} className="mb-2">{line}</p>
-                    ) : (
-                      <br key={i} />
-                    )
-                  ))}
+            )}
+
+            {/* 已翻译内容 */}
+            {!translating && translatedContent && (
+              <ContentBlock
+                label="📖 中文全文"
+                content={translatedContent}
+                icon={FileText}
+              />
+            )}
+
+            {/* 仅RSS摘要提示 */}
+            {!translating && isShortRss && !hasFullContent && (
+              <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-start gap-2">
+                  <Zap className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-amber-800 mb-1">⚡ 当前展示为 RSS 摘要</p>
+                    <p className="text-xs text-amber-700 mb-3">
+                      新闻来源仅提供了简短摘要（约 {rawContentLen} 字符）。点击下方按钮可尝试抓取原文全文。
+                    </p>
+                    {showRefreshButton && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="border-amber-300 text-amber-700 hover:bg-amber-100"
+                        onClick={fetchFullContent}
+                        disabled={refreshing}
+                      >
+                        {refreshing ? (
+                          <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />抓取中...</>
+                        ) : (
+                          <><RefreshCw className="h-3.5 w-3.5 mr-1" />尝试抓取原文全文</>
+                        )}
+                      </Button>
+                    )}
+                    {contentFetchError && (
+                      <p className="text-xs text-red-600 mt-2">抓取失败：{contentFetchError}</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
-            {(transError || fetchError) && (
-              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-                <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-amber-800">
-                  <p className="font-medium">⚠️ 翻译受限</p>
-                  <p className="mt-1">{fetchError || transError}</p>
-                  {rawData.url && (
-                    <p className="mt-2">
-                      您可以点击下方「原文链接」查看完整英文内容
-                    </p>
-                  )}
+            {/* 翻译错误提示 */}
+            {transError && !translating && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
+                  <div className="text-xs text-red-700">
+                    <p className="font-medium">翻译受限：{transError}</p>
+                    {displayNews.url && (
+                      <p className="mt-1">您可以点击顶部「原文」按钮查看英文原文</p>
+                    )}
+                  </div>
                 </div>
+              </div>
+            )}
+
+            {/* 无内容提示 */}
+            {!translatedContent && !translating && !loadError && (
+              <div className="text-center py-8 text-muted-foreground">
+                <FileText className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                <p className="text-sm">暂无内容详情</p>
               </div>
             )}
           </CardContent>
         </Card>
+
+        {/* 标签 */}
+        {displayNews.tags && displayNews.tags.length > 0 && (
+          <Card className="mb-5">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 flex-wrap">
+                {displayNews.tags.map((tag, i) => (
+                  <span key={i} className="text-xs bg-muted px-2 py-1 rounded-full">{tag}</span>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* 原文链接 */}
-        {rawData.url && (
-          <Card className="border-dashed">
+        {displayNews.url && (
+          <Card className="border-dashed mb-6">
             <CardContent className="pt-4 pb-4 text-center">
-              <p className="text-sm text-muted-foreground mb-3">阅读完整原文（英文）</p>
+              <p className="text-sm text-muted-foreground mb-3">阅读完整英文原文</p>
               <Button variant="outline" asChild>
-                <a href={rawData.url} target="_blank" rel="noopener noreferrer">
+                <a href={displayNews.url} target="_blank" rel="noopener noreferrer">
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  {rawData.url.length > 50 ? rawData.url.substring(0, 50) + '...' : rawData.url}
+                  {displayNews.url.length > 60 ? displayNews.url.substring(0, 60) + '...' : displayNews.url}
                 </a>
               </Button>
             </CardContent>
@@ -279,7 +434,7 @@ function NewsDetailContent() {
         )}
 
         {/* 返回按钮 */}
-        <div className="mt-6 text-center">
+        <div className="text-center">
           <Button variant="ghost" onClick={() => router.back()}>
             <ArrowLeft className="h-4 w-4 mr-2" />返回舆情监控
           </Button>

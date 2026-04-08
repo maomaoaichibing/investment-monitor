@@ -639,7 +639,8 @@ export async function saveNewsToEvents(newsItems: NewsItem[]): Promise<{
             sentiment: item.sentiment || 'neutral',
             sentimentScore: item.sentimentScore || 0,
             tags: item.tags || [],
-            imageUrl: item.imageUrl
+            imageUrl: item.imageUrl,
+            titleZh: (item as any).titleZh || null  // 中文标题（翻译后）
           })
         }
       })

@@ -56,7 +56,8 @@ export async function GET(request: NextRequest) {
         tags: metadata.tags || [],
         imageUrl: metadata.imageUrl || undefined,
         alertCount: event._count.alerts,
-        analysisCount: event._count.eventAnalyses
+        analysisCount: event._count.eventAnalyses,
+        titleZh: metadata.titleZh || undefined  // 中文标题（翻译后）
       }
     })
     

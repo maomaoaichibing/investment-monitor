@@ -1,10 +1,12 @@
 /**
  * 股票行情服务 - 多数据源整合
  * 支持A股、港股、美股实时行情
- * 数据源: 腾讯财经 → 新浪财经 → Yahoo Finance (容灾)
+ * 数据源: Finnhub → 腾讯财经 → 新浪财经
  */
 
 import { getCache, setCache, makeCacheKey } from './stockCache'
+
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || ''
 
 // ============== 类型定义 ==============
 
@@ -76,6 +78,23 @@ function toYahooSymbol(symbol: string, market: string): string {
     return symbol.toUpperCase()
   } else {
     return `${symbol}.SS` // Shanghai
+  }
+}
+
+// ============== Finnhub 符号转换 ==============
+
+function toFinnhubSymbol(symbol: string, market: string): string {
+  const m = market.toUpperCase()
+  if (m === 'US') {
+    return symbol.toUpperCase()
+  } else if (m === 'HK') {
+    // 港股：去掉前导0，Finnhub 支持如 0700.HK
+    const digits = symbol.replace(/^0+/, '') || '0'
+    const last4 = digits.slice(-4).padStart(4, '0')
+    return `${last4}.HK`
+  } else {
+    // A股：上海=SH，深圳=SZ
+    return symbol.startsWith('6') ? `SH:${symbol}` : `SZ:${symbol}`
   }
 }
 
@@ -362,11 +381,76 @@ async function fetchFromYahoo(symbol: string, market: string): Promise<StockServ
   }
 }
 
+// ============== Finnhub Finance ==============
+
+async function fetchFromFinnhub(symbol: string, market: string): Promise<StockServiceResult> {
+  if (!FINNHUB_API_KEY) {
+    return { success: false, error: 'FINNHUB_API_KEY 未配置', source: 'finnhub' }
+  }
+  try {
+    const finnhubSym = toFinnhubSymbol(symbol, market)
+    const url = `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(finnhubSym)}&token=${FINNHUB_API_KEY}`
+
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}`, source: 'finnhub' }
+    }
+
+    const json = await response.json()
+    if (!json || (json.c === 0 && json.d === 0 && json.pc === 0)) {
+      return { success: false, error: '无数据', source: 'finnhub' }
+    }
+
+    const price = json.c || 0
+    const prevClose = json.pc || 0
+    const open = json.o || 0
+    const high = json.h || 0
+    const low = json.l || 0
+    const volume = json.v || 0
+
+    const change = price - prevClose
+    const changePercent = prevClose > 0 ? (change / prevClose) * 100 : 0
+    const amplitude = prevClose > 0 ? ((high - low) / prevClose) * 100 : 0
+
+    // Finnhub 基础数据用 symbol 字段，后续可扩展 fundamentals API
+    const cleanSymbol = symbol.replace(/\.[A-Z]+$/, '')
+
+    return {
+      success: true,
+      source: 'finnhub',
+      data: {
+        symbol: cleanSymbol,
+        name: symbol,
+        price,
+        change: parseFloat(change.toFixed(2)),
+        changePercent: parseFloat(changePercent.toFixed(2)),
+        open,
+        prevClose,
+        high,
+        low,
+        volume,
+        amount: 0,
+        market,
+        amplitude: parseFloat(amplitude.toFixed(2)),
+        updateTime: new Date().toISOString(),
+        status: 'trading',
+        source: 'finnhub'
+      }
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : '获取失败',
+      source: 'finnhub'
+    }
+  }
+}
+
 // ============== 主函数 ==============
 
 /**
  * 获取单个股票实时行情（多数据源容灾）
- * 优先级: 腾讯 → 新浪 → Yahoo
+ * 优先级: Finnhub → 腾讯财经 → 新浪财经
  */
 export async function getStockQuote(
   symbol: string,
@@ -383,31 +467,37 @@ export async function getStockQuote(
     }
   }
 
-  // 腾讯财经
+  let lastError = ''
+
+  // Finnhub（主数据源，免费支持美/港/A股）
+  if (FINNHUB_API_KEY) {
+    const result = await fetchFromFinnhub(symbol, market)
+    if (result.success && result.data) {
+      setCache(cacheKey, result.data)
+      return result
+    }
+    lastError = result.error || ''
+    console.log(`[stockService] ⚠️ Finnhub 获取 ${symbol} 失败: ${lastError}`)
+  }
+
+  // 腾讯财经（备用）
   const tencentResult = await fetchFromTencent(symbol, market)
   if (tencentResult.success && tencentResult.data) {
     setCache(cacheKey, tencentResult.data)
     return tencentResult
   }
 
-  // 新浪财经
+  // 新浪财经（兜底）
   const sinaResult = await fetchFromSina(symbol, market)
   if (sinaResult.success && sinaResult.data) {
     setCache(cacheKey, sinaResult.data)
     return sinaResult
   }
 
-  // Yahoo Finance 备用
-  const yahooResult = await fetchFromYahoo(symbol, market)
-  if (yahooResult.success && yahooResult.data) {
-    setCache(cacheKey, yahooResult.data)
-    return yahooResult
-  }
-
   // 全部失败
   return {
     success: false,
-    error: tencentResult.error || sinaResult.error || yahooResult.error || '获取失败',
+    error: lastError || tencentResult.error || sinaResult.error || '获取失败',
     source: 'none'
   }
 }

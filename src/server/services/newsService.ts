@@ -1,11 +1,13 @@
 /**
  * 新闻舆情服务 - 多数据源整合
  * 支持美股(HK/US) + A股(HK/CN) 财经新闻
- * 数据源: Yahoo Finance RSS → 东方财富 → 模拟数据（兜底）
+ * 数据源: Finnhub News → Yahoo Finance RSS → 东方财富
  */
 
 import { db } from '@/lib/db'
 import { get as httpsGet } from 'https'
+
+const FINNHUB_API_KEY = process.env.FINNHUB_API_KEY || ''
 
 // ============== 类型定义 ==============
 
@@ -446,6 +448,112 @@ async function fetchFromYahooSearch(symbol: string, market: string): Promise<New
   }
 }
 
+// ============== Finnhub News ==============
+
+/**
+ * Finnhub 实时财经新闻（无需认证也可获取部分数据）
+ * 免费 tier: company news / market news
+ * API: https://finnhub.io/docs/api#company-news
+ */
+async function fetchFromFinnhubNews(symbol: string, market: string): Promise<NewsResult> {
+  if (!FINNHUB_API_KEY) {
+    return { success: false, error: 'FINNHUB_API_KEY 未配置', source: 'finnhub_news' }
+  }
+
+  try {
+    let symbolForNews: string
+
+    if (market === 'US') {
+      symbolForNews = symbol.toUpperCase()
+    } else if (market === 'HK') {
+      // 港股用4位代码
+      const digits = symbol.replace(/^0+/, '') || '0'
+      const last4 = digits.slice(-4).padStart(4, '0')
+      symbolForNews = last4 // Finnhub 港股也用4位
+    } else {
+      // A股用完整代码
+      symbolForNews = symbol
+    }
+
+    // 公司新闻：获取该股票最新新闻
+    const to = Math.floor(Date.now() / 1000)
+    const from = to - 7 * 24 * 60 * 60 // 过去7天
+    const url = `https://finnhub.io/api/v1/news?category=general&token=${FINNHUB_API_KEY}`
+
+    const response = await fetch(url, { signal: AbortSignal.timeout(8000) })
+    if (!response.ok) {
+      return { success: false, error: `HTTP ${response.status}`, source: 'finnhub_news' }
+    }
+
+    const json: any[] = await response.json()
+    if (!Array.isArray(json) || json.length === 0) {
+      return { success: false, error: '无数据', source: 'finnhub_news' }
+    }
+
+    // 如果有指定股票，尝试找相关公司新闻
+    let items: NewsItem[] = []
+    const lowerSymbol = symbolForNews.toLowerCase()
+
+    // Finnhub 公司新闻接口（需要 token，可精确匹配）
+    const companyNewsUrl = `https://finnhub.io/api/v1/company-news?symbol=${encodeURIComponent(symbolForNews)}&from=${new Date(from * 1000).toISOString().split('T')[0]}&to=${new Date(to * 1000).toISOString().split('T')[0]}&token=${FINNHUB_API_KEY}`
+
+    let companyNews: any[] = []
+    try {
+      const cnRes = await fetch(companyNewsUrl, { signal: AbortSignal.timeout(8000) })
+      if (cnRes.ok) {
+        const cnJson: any[] = await cnRes.json()
+        if (Array.isArray(cnJson) && cnJson.length > 0) {
+          companyNews = cnJson
+        }
+      }
+    } catch (e) {
+      console.log(`[newsService] Finnhub company-news 获取失败: ${e instanceof Error ? e.message : 'unknown'}`)
+    }
+
+    if (companyNews.length > 0) {
+      items = companyNews.slice(0, 20).map((item) => ({
+        symbol,
+        title: item.headline || '',
+        content: (item.summary || '').substring(0, 300),
+        url: item.url || '',
+        source: item.source || 'Finnhub',
+        publishedAt: item.datetime ? new Date(item.datetime * 1000).toISOString() : new Date().toISOString(),
+        tags: item.related?.split(',').filter(Boolean).slice(0, 5) || [],
+        imageUrl: item.image || undefined
+      }))
+    } else {
+      // 无公司新闻时，用通用财经新闻并做标题匹配
+      items = json.slice(0, 50).map((item) => ({
+        symbol,
+        title: item.headline || '',
+        content: (item.summary || '').substring(0, 300),
+        url: item.url || '',
+        source: item.source || 'Finnhub',
+        publishedAt: item.datetime ? new Date(item.datetime * 1000).toISOString() : new Date().toISOString(),
+        tags: item.keywords?.split(',').filter(Boolean).slice(0, 5) || [],
+        imageUrl: item.image || undefined
+      }))
+    }
+
+    if (items.length === 0) {
+      return { success: false, error: '无新闻', source: 'finnhub_news' }
+    }
+
+    return {
+      success: true,
+      data: items,
+      source: 'finnhub_news',
+      fetchedAt: new Date().toISOString()
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Finnhub新闻获取失败',
+      source: 'finnhub_news'
+    }
+  }
+}
+
 // ============== 主函数 ==============
 
 /**
@@ -460,25 +568,27 @@ export async function fetchNewsForSymbol(
   
   // 按优先级尝试各数据源
   const sources: Array<{ fn: (sym: string, mkt: string) => Promise<NewsResult>; name: string }> = []
-  
+
   if (market === 'US') {
     sources.push(
+      { fn: fetchFromFinnhubNews, name: 'Finnhub News' },
       { fn: fetchFromYahooSearch, name: 'Yahoo Search' },
       { fn: fetchFromYahooRSS, name: 'Yahoo RSS' },
       { fn: fetchFromSinaNews, name: '新浪财经' }
     )
   } else if (market === 'HK') {
-    // 港股优先 Yahoo RSS（支持4位代码如0700.HK），新浪兜底
     sources.push(
+      { fn: fetchFromFinnhubNews, name: 'Finnhub News' },
       { fn: fetchFromYahooRSS, name: 'Yahoo RSS' },
       { fn: fetchFromSinaNews, name: '新浪财经' },
       { fn: fetchFromYahooSearch, name: 'Yahoo Search' }
     )
   } else {
-    // A股：新浪财经 + 东方财富
+    // A股：东方财富 + 新浪财经 + Finnhub
     sources.push(
+      { fn: fetchFromEastMoney, name: '东方财富' },
       { fn: fetchFromSinaNews, name: '新浪财经' },
-      { fn: fetchFromEastMoney, name: '东方财富' }
+      { fn: fetchFromFinnhubNews, name: 'Finnhub News' }
     )
   }
   

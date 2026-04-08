@@ -5,6 +5,7 @@
  */
 
 import { db } from '@/lib/db'
+import { get as httpsGet } from 'https'
 
 // ============== 类型定义 ==============
 
@@ -185,6 +186,34 @@ function convertToYahooHKCode(symbol: string): string {
   return `${last4}.HK`
 }
 
+/**
+ * 使用 https 模块强制 IPv4 获取内容（解决腾讯云 IPv6 不通的 Node.js fetch 问题）
+ */
+function httpsGetText(url: string, headers: Record<string, string> = {}, timeout = 8000): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    try {
+      const urlObj = new URL(url)
+      const options = {
+        hostname: urlObj.hostname,
+        path: urlObj.pathname + urlObj.search,
+        method: 'GET',
+        headers: { ...headers, 'Accept': 'application/rss+xml, application/xml, text/xml' },
+        family: 4  // 强制 IPv4（腾讯云服务器 IPv6 不通，但 curl 有 fallback，Node.js fetch 没有）
+      }
+      const req = httpsGet(options, res => {
+        let body = ''
+        res.on('data', chunk => body += chunk)
+        res.on('end', () => resolve({ status: res.statusCode || 0, body }))
+      })
+      req.on('error', reject)
+      req.on('timeout', () => { req.destroy(); reject(new Error('timeout')) })
+      setTimeout(() => { req.destroy(); reject(new Error('timeout')) }, timeout)
+    } catch (e) {
+      reject(e)
+    }
+  })
+}
+
 // ============== 数据源 1: Yahoo Finance RSS ==============
 
 async function fetchFromYahooRSS(symbol: string, market: string): Promise<NewsResult> {
@@ -203,20 +232,19 @@ async function fetchFromYahooRSS(symbol: string, market: string): Promise<NewsRe
     
     const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${rssSymbol}&region=US&lang=en-US`
     
-    const response = await fetch(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/rss+xml, application/xml, text/xml'
-      },
-      signal: AbortSignal.timeout(8000)
-    })
-    
-    if (!response.ok && response.status !== 200) {
-      // RSS 可能返回 404，降级
-      return { success: false, error: `HTTP ${response.status}`, source: 'yahoo_rss' }
+    // 关键修复：使用 https 模块强制 IPv4（Node.js fetch 遇到 IPv6 超时不会回退 IPv4）
+    let httpRes: { status: number; body: string }
+    try {
+      httpRes = await httpsGetText(url, { 'User-Agent': 'Mozilla/5.0' }, 8000)
+    } catch (e) {
+      return { success: false, error: `fetch failed: ${e instanceof Error ? e.message : 'unknown'}`, source: 'yahoo_rss' }
     }
     
-    const xml = await response.text()
+    if (httpRes.status !== 200) {
+      return { success: false, error: `HTTP ${httpRes.status}`, source: 'yahoo_rss' }
+    }
+    
+    const xml = httpRes.body
     
     if (!xml || xml.includes('<description>Invalid Ticker Symbol</description>')) {
       return { success: false, error: '无效股票代码', source: 'yahoo_rss' }

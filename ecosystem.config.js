@@ -21,6 +21,8 @@ module.exports = {
     env_production: {
       NODE_ENV: 'production',
       PORT: 4000,
+      // 强制 IPv4 解析，解决腾讯云服务器 IPv6 不通导致的 Yahoo RSS 超时
+      NODE_OPTIONS: '--dns-result-order=ipv4',
       // 生产环境变量（实际值在服务器上配置）
       DATABASE_URL: 'file:./dev.db',
       // API 密钥通过服务器环境变量配置，不硬编码
@@ -28,6 +30,7 @@ module.exports = {
     env: {
       NODE_ENV: 'production',
       PORT: 4000,
+      NODE_OPTIONS: '--dns-result-order=ipv4',
     },
     // PM2 配置
     instances: 1,           // 单实例（SQLite 不适合多进程）

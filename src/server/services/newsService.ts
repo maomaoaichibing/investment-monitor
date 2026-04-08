@@ -48,9 +48,14 @@ function parseYahooRSS(xml: string, symbol: string): NewsItem[] {
     const itemXml = match[1]
     
     const getTag = (tag: string) => {
-      const re = new RegExp(`<${tag}[^>]*><!\[CDATA\[([\s\S]*?)\]\]><\/${tag}|<${tag}[^>]*>([\s\S]*?)<\/${tag}>`, 'i')
-      const m = itemXml.match(re)
-      return m ? (m[1] || m[2] || '').trim() : ''
+      // 优先匹配 CDATA，失败则匹配普通文本；使用 .*? 而非 [\s\S]*? 避免模板字符串转义问题
+      const cdataRe = new RegExp(`<!\\[CDATA\\[(.*?)\\]\\]>`, 'i')
+      const cdataMatch = itemXml.match(cdataRe)
+      if (cdataMatch) return cdataMatch[1].trim()
+      
+      const textRe = new RegExp(`<${tag}[^>]*>(.*?)<\\/${tag}>`, 'i')
+      const textMatch = itemXml.match(textRe)
+      return textMatch ? textMatch[1].trim() : ''
     }
     
     const title = getTag('title')

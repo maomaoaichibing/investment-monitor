@@ -41,10 +41,10 @@ export async function POST(request: NextRequest) {
       
       // 情感分析
       if (analyzeSentiment) {
-        newsWithSentiment = newsWithSentiment.map(item => ({
-          ...item,
-          ...ruleBasedSentiment(item.title + ' ' + item.content)
-        }))
+        newsWithSentiment = newsWithSentiment.map(item => {
+          const { sentiment, score } = ruleBasedSentiment(item.title + ' ' + item.content)
+          return { ...item, sentiment, sentimentScore: score }
+        })
       }
       
       // 存入数据库
@@ -69,15 +69,15 @@ export async function POST(request: NextRequest) {
       // 情感分析
       if (analyzeSentiment) {
         for (const sym of Object.keys(newsResults.bySymbol)) {
-          newsResults.bySymbol[sym] = newsResults.bySymbol[sym].map(item => ({
-            ...item,
-            ...ruleBasedSentiment(item.title + ' ' + item.content)
-          }))
+          newsResults.bySymbol[sym] = newsResults.bySymbol[sym].map(item => {
+            const { sentiment, score } = ruleBasedSentiment(item.title + ' ' + item.content)
+            return { ...item, sentiment, sentimentScore: score }
+          })
         }
-        newsResults.news = newsResults.news.map(item => ({
-          ...item,
-          ...ruleBasedSentiment(item.title + ' ' + item.content)
-        }))
+        newsResults.news = newsResults.news.map(item => {
+          const { sentiment, score } = ruleBasedSentiment(item.title + ' ' + item.content)
+          return { ...item, sentiment, sentimentScore: score }
+        })
       }
       
       // 存入数据库

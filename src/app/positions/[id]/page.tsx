@@ -120,7 +120,7 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
 
         <div className="flex gap-2 sm:gap-3">
           <Button variant="outline" size="sm" asChild>
-            <Link href={`/portfolios/${position.portfolio.id}/positions/${position.id}/edit`}>
+            <Link href={`/positions/${position.id}/edit`}>
               <Edit className="mr-2 h-4 w-4" />
               编辑
             </Link>
@@ -325,7 +325,7 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
 
             {position._count.thesis === 0 ? (
               <Button asChild>
-                <Link href={`/thesis/generate?positionId=${position.id}`}>
+                <Link href={`/theses/generate?positionId=${position.id}`}>
                   <Plus className="mr-2 h-4 w-4" />
                   生成投资论题
                 </Link>
@@ -355,7 +355,7 @@ export default async function PositionDetailPage({ params }: PositionDetailPageP
                 为该持仓生成投资论题，建立完整的投资逻辑体系
               </p>
               <Button asChild>
-                <Link href={`/thesis/generate?positionId=${position.id}`}>
+                <Link href={`/theses/generate?positionId=${position.id}`}>
                   <FileText className="mr-2 h-4 w-4" />
                   生成投资论题
                 </Link>

@@ -65,7 +65,7 @@ const formatDateTime = (dateString: string) => {
 
 async function getEvent(id: string) {
   try {
-    const response = await fetch(`http://localhost:4001/api/events/${id}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/events/${id}`, {
       cache: 'no-store'
     });
     
@@ -283,11 +283,7 @@ export default async function EventDetailPage({
             分析事件影响
           </Link>
         </Button>
-        <Button variant="outline" asChild>
-          <Link href={`/events/${event.id}/edit`}>
-            编辑事件
-          </Link>
-        </Button>
+
       </div>
     </div>
   );

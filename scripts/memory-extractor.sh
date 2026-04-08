@@ -47,8 +47,11 @@ done
 echo "3. 分析用户偏好..."
 
 # 检查用户满意度信号
-POSITIVE=$(grep -c "很好\|不错\|完美\|感谢" "$LATEST_LOG" 2>/dev/null || echo "0")
-NEGATIVE=$(grep -c "不对\|不行\|有问题\|修复" "$LATEST_LOG" 2>/dev/null || echo "0")
+POSITIVE=$(grep -Ec "很好|不错|完美|感谢" "$LATEST_LOG" 2>/dev/null || true)
+NEGATIVE=$(grep -Ec "不对|不行|有问题|修复" "$LATEST_LOG" 2>/dev/null || true)
+
+[ -n "$POSITIVE" ] || POSITIVE=0
+[ -n "$NEGATIVE" ] || NEGATIVE=0
 
 echo "   - 正面反馈: $POSITIVE"
 echo "   - 问题反馈: $NEGATIVE"

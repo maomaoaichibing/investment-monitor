@@ -153,7 +153,7 @@ export default function RecentTheses() {
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-muted-foreground" />
                     <Link
-                      href={`/thesis/${thesis.id}`}
+                      href={`/theses/${thesis.id}`}
                       className="font-medium hover:text-primary"
                     >
                       {thesis.position.symbol}

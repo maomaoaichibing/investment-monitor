@@ -56,10 +56,9 @@ export default function ThesisCard() {
       const response = await fetch('/api/thesis')
       const data = await response.json()
 
-      if (data.success) {
-        // 取前3个 thesis
-        setTheses((data.theses || []).slice(0, 3))
-      }
+      // /api/thesis 返回 { theses: [...] }，也兼容 { success: true, data: { theses: [...] } }
+      const allTheses = data.success ? (data.data?.theses || data.theses || []) : (data.theses || [])
+      setTheses(allTheses.slice(0, 3))
     } catch (err) {
       console.error('Failed to fetch theses:', err)
       setError(err instanceof Error ? err.message : '未知错误')
@@ -187,7 +186,7 @@ export default function ThesisCard() {
                     {/* 标题行 */}
                     <div className="flex items-center gap-2 mb-1">
                       <Link
-                        href={`/thesis/${thesis.id}`}
+                        href={`/theses/${thesis.id}`}
                         className="font-semibold hover:text-primary flex items-center gap-1"
                       >
                         {thesis.position.symbol}

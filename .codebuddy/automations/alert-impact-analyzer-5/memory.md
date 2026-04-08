@@ -1,15 +1,41 @@
 # Alert Impact Analyzer - 执行记录
 
-## 最新执行 (2026-04-07 21:04):
+## 最新执行 (2026-04-08 07:12):
 
-**状态**: ✅ 成功（无操作）
+**状态**: ✅ 成功
 
 **分析结果**:
-- 未读 important/urgent alerts: 0个
-- 蔚来(NIO)和美光科技(MU)的 alerts 均已处理完毕
-- 无新的 high/medium 级别 alert 需分析
+- 未读 alerts: 4个（腾讯控股info、中国海洋石油watch、美光科技important、蔚来urgent）
+- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
+- 美光科技(MU): neutral, 影响分 4, 健康度 80→65 (-15), weakened
 
-**API**: http://62.234.79.188:4000/api/alerts/[id]/analyze
+**API**: http://localhost:4000/api/alerts/[id]/analyze
+
+---
+
+## 执行记录 (2026-04-08 05:11):
+
+**状态**: ✅ 成功
+
+**分析结果**:
+- 未读 alerts: 4个（腾讯控股info、中国海洋石油watch、美光科技important、蔚来urgent）
+- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
+- 美光科技(MU): neutral, 影响分 4, 健康度 80→75 (-5), intact
+
+**API**: http://localhost:4000/api/alerts/[id]/analyze
+
+---
+
+## 最新执行 (2026-04-08 03:10):
+
+**状态**: ✅ 成功
+
+**分析结果**:
+- 未读 important/urgent alerts: 2个
+- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
+- 美光科技(MU): neutral, 影响分 4, 健康度 82→65 (-15), weakened
+
+**API**: http://localhost:4000/api/alerts/[id]/analyze
 
 ---
 

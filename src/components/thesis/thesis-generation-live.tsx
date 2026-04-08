@@ -34,6 +34,7 @@ interface SSEMessage {
   duration?: number
   timestamp?: number
   positionId?: string
+  thesisId?: string
   symbol?: string
   assetName?: string
   healthScore?: number
@@ -120,12 +121,13 @@ export function ThesisGenerationLive({
 
             if (data.event === 'complete') {
               setIsComplete(true)
+              const thesisId = data.thesisId || data.positionId || positionId
               setFinalResult({
                 healthScore: data.healthScore || 0,
-                thesisId: data.positionId || positionId
+                thesisId
               })
-              if (onComplete && data.positionId) {
-                onComplete(data.positionId)
+              if (onComplete && thesisId) {
+                onComplete(thesisId)
               }
             }
 

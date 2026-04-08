@@ -6,6 +6,7 @@ set -e
 
 MEMORY_DIR="/Users/zhangxiaohei/WorkBuddy/smart-investment/.workbuddy/memory"
 SCRIPTS_DIR="/Users/zhangxiaohei/WorkBuddy/smart-investment/scripts"
+ARCHIVE_DIR="$MEMORY_DIR/archive"
 TODAY=$(date +%Y-%m-%d)
 
 echo "🧠 记忆管理系统"
@@ -70,7 +71,7 @@ $(grep -rh "^# " "$MEMORY_DIR"/*.md 2>/dev/null | sort | uniq -c | sort -rn | he
 
 - [核心记忆](MEMORY.md) - 项目知识和会话摘要
 - [用户偏好](preferences.md) - 沟通风格和技术约定
-- [每日日志](../smart-investment/.workbuddy/memory/) - 按日期查看
+- [每日日志](./) - 按日期查看
 - [归档](archive/) - 被遗忘的旧记忆
 - [主题文档](topics/) - 专题知识库
 
@@ -78,13 +79,13 @@ $(grep -rh "^# " "$MEMORY_DIR"/*.md 2>/dev/null | sort | uniq -c | sort -rn | he
 
 \`\`\`bash
 # 查看记忆
-cat ~/.workbuddy/memory/MEMORY.md
+cat /Users/zhangxiaohei/WorkBuddy/smart-investment/.workbuddy/memory/MEMORY.md
 
 # 搜索记忆
-grep "关键词" ~/.workbuddy/memory/MEMORY.md
+grep "关键词" /Users/zhangxiaohei/WorkBuddy/smart-investment/.workbuddy/memory/MEMORY.md
 
 # 运行记忆管理
-bash ~/.workbuddy/scripts/memory-manager.sh
+bash /Users/zhangxiaohei/WorkBuddy/smart-investment/scripts/memory-manager.sh
 \`\`\`
 
 ---

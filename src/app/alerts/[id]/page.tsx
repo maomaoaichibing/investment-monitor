@@ -230,11 +230,15 @@ export default async function AlertDetailPage({ params }: AlertDetailPageProps) 
                 
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">相关投资论题</p>
-                  <Button variant="link" size="sm" className="p-0 h-auto" asChild>
-                    <Link href={`/theses/${alert.eventAnalysis.thesisId}`}>
-                      查看论题
-                    </Link>
-                  </Button>
+                  {alert.eventAnalysis.thesisId ? (
+                    <Button variant="link" size="sm" className="p-0 h-auto" asChild>
+                      <Link href={`/theses/${alert.eventAnalysis.thesisId}`}>
+                        查看论题
+                      </Link>
+                    </Button>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">暂无关联论题</span>
+                  )}
                 </div>
               </div>
             </CardContent>

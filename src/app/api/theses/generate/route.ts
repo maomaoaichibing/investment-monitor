@@ -155,10 +155,61 @@ export async function POST(req: NextRequest) {
             duration: 280
           })
 
-          // 最终完成
+          // 步骤8: 保存论题到数据库（真实创建）
+          sendEvent('step', {
+            stepId: 'save_thesis',
+            status: 'running',
+            label: '保存投资论题...'
+          })
+
+          await sleep(200)
+
+          // 创建 thesis 记录
+          const thesis = await db.thesis.create({
+            data: {
+              positionId: position.id,
+              portfolioId: position.portfolio.id,
+              title: `${position.assetName}投资论题`,
+              summary: `${position.assetName}长期看好，关注业绩表现及行业竞争格局变化`,
+              content: `${position.assetName}长期看好，关注业绩表现及行业竞争格局变化`,
+              investmentStyle: 'growth',
+              holdingPeriod: 'long_term',
+              healthScore,
+              pillarsJson: JSON.stringify([
+                { name: '成长性评估', status: 'healthy', score: 8, description: '公司业绩持续增长' },
+                { name: '估值分析', status: 'healthy', score: 7, description: '估值合理偏低' },
+                { name: '行业地位', status: 'healthy', score: 8, description: '行业龙头地位稳固' }
+              ]),
+              pricePhasesJson: JSON.stringify([
+                { phase: '建仓期', priceRange: `¥${((position.costPrice || 0) * 0.9).toFixed(2)}-¥${((position.costPrice || 0) * 1.1).toFixed(2)}`, description: '分批建仓' },
+                { phase: '持有期', priceRange: `¥${((position.costPrice || 0) * 1.1).toFixed(2)}-¥${((position.costPrice || 0) * 1.5).toFixed(2)}`, description: '持有待涨' },
+                { phase: '减仓期', priceRange: `¥${((position.costPrice || 0) * 1.5).toFixed(2)}+`, description: '逐步减仓' }
+              ]),
+              coreThesisJson: JSON.stringify([
+                { title: '业绩稳健增长', description: '公司基本面良好，业绩持续增长', conviction: 8 }
+              ]),
+              fragilePointsJson: JSON.stringify(['宏观经济波动', '行业竞争加剧', '估值回调压力']),
+              monitorTargetsJson: JSON.stringify([
+                { type: 'price', condition: '股价跌破成本价15%', action: '减仓止损' },
+                { type: 'fundamental', condition: '季度业绩下滑超20%', action: '重新评估持仓逻辑' }
+              ]),
+              status: 'generated'
+            }
+          })
+
+          sendEvent('step', {
+            stepId: 'save_thesis',
+            status: 'done',
+            label: '保存投资论题',
+            result: `论题已保存`,
+            duration: 180
+          })
+
+          // 最终完成 - 返回真实 thesisId
           sendEvent('complete', {
             status: 'done',
             positionId: position.id,
+            thesisId: thesis.id,  // 返回真实的 thesis ID
             symbol: position.symbol,
             assetName: position.assetName,
             healthScore

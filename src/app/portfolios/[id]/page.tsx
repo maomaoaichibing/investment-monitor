@@ -128,7 +128,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
             </Link>
           </Button>
           <Button asChild>
-            <Link href={`/portfolios/${params.id}/positions/new`}>
+            <Link href="/positions/new">
               <Plus className="mr-2 h-4 w-4" />
               新增持仓
             </Link>
@@ -246,7 +246,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
                               </Link>
                             </Button>
                             <Button variant="outline" size="sm" asChild>
-                              <Link href={`/portfolios/${params.id}/positions/${position.id}/edit`}>
+                              <Link href={`/positions/${position.id}/edit`}>
                                 编辑
                               </Link>
                             </Button>
@@ -264,24 +264,24 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
                               className="text-green-600 hover:text-green-700 hover:border-green-300"
                               asChild
                             >
-                              <Link href={`/thesis/generate?positionId=${position.id}`}>
+                              <Link href={`/theses/generate?positionId=${position.id}`}>
                                 <FileText className="h-3 w-3 mr-1" />
                                 生成投资论题
                               </Link>
                             </Button>
-                          ) : (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
+                          ) : position.thesis[0]?.id ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
                               className="text-blue-600 hover:text-blue-700 hover:border-blue-300"
                               asChild
                             >
-                              <Link href={`/theses/${position.thesis[0]?.id || ''}`}>
+                              <Link href={`/theses/${position.thesis[0].id}`}>
                                 <FileText className="h-3 w-3 mr-1" />
                                 查看投资论题
                               </Link>
                             </Button>
-                          )}
+                          ) : null}
                         </div>
                         </div>
                       </div>
@@ -297,7 +297,7 @@ export default async function PortfolioDetailPage({ params }: PortfolioDetailPag
                   此投资组合还没有任何持仓，添加第一个持仓开始监控
                 </p>
                 <Button asChild>
-                  <Link href={`/portfolios/${params.id}/positions/new`}>
+                  <Link href="/positions/new">
                     <Plus className="mr-2 h-4 w-4" />
                     添加第一个持仓
                   </Link>

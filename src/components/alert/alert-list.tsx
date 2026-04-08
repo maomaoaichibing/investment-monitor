@@ -323,12 +323,16 @@ export default function AlertList({ initialAlerts }: { initialAlerts: Alert[] })
                       </span>
                       <span>{alert.position?.assetName || alert.assetName || '未知'}</span>
                       <span>|</span>
-                      <Link
-                        href={`/portfolios/${alert.portfolio?.id || ''}`}
-                        className="hover:text-primary"
-                      >
-                        {alert.portfolio?.name || '未知组合'}
-                      </Link>
+                      {alert.portfolio?.id ? (
+                        <Link
+                          href={`/portfolios/${alert.portfolio.id}`}
+                          className="hover:text-primary"
+                        >
+                          {alert.portfolio?.name || '未知组合'}
+                        </Link>
+                      ) : (
+                        <span>{alert.portfolio?.name || '未知组合'}</span>
+                      )}
                       <span>|</span>
                       <span>{formatRelativeTime(new Date(alert.sentAt))}</span>
                       {alert.event && (

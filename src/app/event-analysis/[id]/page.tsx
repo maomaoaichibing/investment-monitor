@@ -71,7 +71,7 @@ const getRelevanceColor = (score: number) => {
 
 async function getEventAnalysis(id: string) {
   try {
-    const response = await fetch(`http://localhost:4001/api/event-analysis/${id}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || ''}/api/event-analysis/${id}`, {
       cache: 'no-store'
     })
 

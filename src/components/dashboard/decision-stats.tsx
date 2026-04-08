@@ -4,160 +4,125 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, TrendingDown, AlertTriangle, Shield, Brain } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
-// Mock 今日盈亏数据
-// TODO: Replace with API call: GET /api/dashboard/profit-summary
-const mockProfitData = {
-  amount: 2340.50,
-  percent: 1.2,
-  changePercent: 0.3
-}
-
-// Mock AI 本周分析次数
-// TODO: Replace with API call: GET /api/analytics/weekly-count
-const mockAICountData = {
-  weeklyCount: 12,
-  lastAnalysisTime: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() // 2小时前
-}
-
-// 持仓预警数据
 interface PositionWarning {
-  symbol: string
-  name: string
-  reason: string
+  symbol: string; name: string; reason: string
 }
 
-interface DashboardStatsProps {
+interface DashboardStats {
   portfolioCount: number
   positionCount: number
   avgHealthScore: number
   healthyCount: number
   warningCount: number
-  warningPositions: PositionWarning[]
+  weeklyAnalysisCount: number
 }
 
-export default function DecisionStats({
-  portfolioCount,
-  positionCount,
-  avgHealthScore,
-  healthyCount,
-  warningCount,
-  warningPositions
-}: DashboardStatsProps) {
-  // 格式化相对时间
-  const formatRelativeTime = (timestamp: string) => {
-    const now = new Date()
-    const date = new Date(timestamp)
-    const diff = now.getTime() - date.getTime()
-    const hours = Math.floor(diff / (1000 * 60 * 60))
-    const minutes = Math.floor(diff / (1000 * 60))
+interface ProfitSummary {
+  amount: number
+  percent: number
+  changePercent: number
+}
 
-    if (minutes < 60) return `${minutes}分钟前`
-    if (hours < 24) return `${hours}小时前`
-    return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' })
-  }
+interface DecisionStatsProps {
+  initialStats?: DashboardStats
+  initialProfit?: ProfitSummary
+}
 
-  // 格式化金额
-  const formatAmount = (amount: number) => {
-    const absAmount = Math.abs(amount)
-    const prefix = amount >= 0 ? '+' : '-'
-    return `${prefix}¥${absAmount.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
+export default function DecisionStats({ initialStats, initialProfit }: DecisionStatsProps) {
+  const [stats, setStats] = useState<DashboardStats | null>(initialStats || null)
+  const [profit, setProfit] = useState<ProfitSummary | null>(initialProfit || null)
+  const [loading, setLoading] = useState(!initialStats)
 
-  // 健康度环形进度条 - 纯SVG实现，不依赖第三方库
+  useEffect(() => {
+    if (initialStats) return
+    async function load() {
+      setLoading(true)
+      try {
+        const r = await fetch('/api/dashboard/overview')
+        const d = await r.json()
+        if (d.success) {
+          setStats(d.data.stats)
+          setProfit(d.data.profitSummary)
+        }
+      } catch {}
+      setLoading(false)
+    }
+    load()
+  }, [])
+
+  // Health ring SVG component
   const HealthRing = ({ score }: { score: number }) => {
-    // 颜色规则：分数 > 70 绿色，40-70 黄色，< 40 红色
     const getArcColor = (s: number) => {
       if (s >= 70) return 'text-green-500'
       if (s >= 40) return 'text-yellow-500'
       return 'text-red-500'
     }
-
     const getTextColor = (s: number) => {
       if (s >= 70) return 'text-green-600'
       if (s >= 40) return 'text-yellow-600'
       return 'text-red-600'
     }
-
-    const arcColor = getArcColor(score)
-    const textColor = getTextColor(score)
-
     return (
       <div className="relative w-12 h-12">
         <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
-          {/* 灰色底圈 */}
-          <path
-            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="text-muted"
-          />
-          {/* 进度弧 - 使用 strokeDasharray 实现环形进度 */}
-          <path
-            d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeDasharray={`${score}, 100`}
-            strokeLinecap="round"
-            className={arcColor}
-          />
+          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none" stroke="currentColor" strokeWidth="3" className="text-muted" />
+          <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+            fill="none" stroke="currentColor" strokeWidth="3"
+            strokeDasharray={`${score}, 100`} strokeLinecap="round" className={getArcColor(score)} />
         </svg>
-        {/* 中间数字 */}
-        <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${textColor}`}>
+        <span className={`absolute inset-0 flex items-center justify-center text-xs font-bold ${getTextColor(score)}`}>
           {score}
         </span>
       </div>
     )
   }
 
-  // 数据一致性修复：需关注持仓显示2（因为AI动态有NIO紧急和00883预警）
-  const hasWarnings = warningCount > 0
+  const formatAmount = (amount: number) => {
+    const prefix = amount >= 0 ? '+' : '-'
+    return `${prefix}¥${Math.abs(amount).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
 
-  const stats = [
-    // 卡片1：今日盈亏
+  const cards = [
     {
       title: '今日盈亏',
-      value: formatAmount(mockProfitData.amount),
-      subValue: `${mockProfitData.amount >= 0 ? '+' : ''}${mockProfitData.percent}%`,
-      subText: `较昨日 ${mockProfitData.changePercent >= 0 ? '+' : ''}${mockProfitData.changePercent}%`,
-      icon: mockProfitData.amount >= 0 ? TrendingUp : TrendingDown,
-      iconColor: mockProfitData.amount >= 0 ? 'text-red-500' : 'text-green-500',
-      bgColor: mockProfitData.amount >= 0 ? 'bg-red-50 dark:bg-red-950/20' : 'bg-green-50 dark:bg-green-950/20',
-      valueColor: mockProfitData.amount >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400',
+      value: profit ? formatAmount(profit.amount) : '—',
+      subValue: profit ? `${profit.percent >= 0 ? '+' : ''}${profit.percent}%` : '—',
+      subText: profit ? `较昨日 ${profit.changePercent >= 0 ? '+' : ''}${profit.changePercent}%` : '加载中...',
+      icon: profit && profit.amount >= 0 ? TrendingUp : TrendingDown,
+      iconColor: profit && profit.amount >= 0 ? 'text-red-500' : 'text-green-500',
+      bgColor: profit && profit.amount >= 0 ? 'bg-red-50 dark:bg-red-950/20' : 'bg-green-50 dark:bg-green-950/20',
+      valueColor: profit && profit.amount >= 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400',
       isProfit: true
     },
-    // 卡片2：需关注持仓 - 数据一致性修复
     {
       title: '需关注持仓',
-      value: hasWarnings ? warningCount.toString() : '0',
-      subValue: hasWarnings ? '需要关注' : '全部健康',
-      subText: hasWarnings ? `${warningPositions.length}个持仓有异常信号` : '无异常信号',
+      value: stats ? (stats.warningCount > 0 ? stats.warningCount.toString() : '0') : '—',
+      subValue: stats ? (stats.warningCount > 0 ? '需要关注' : '全部健康') : '—',
+      subText: stats ? `${stats.warningCount}个持仓有异常信号` : '—',
       icon: AlertTriangle,
-      iconColor: hasWarnings ? 'text-orange-500' : 'text-green-500',
-      bgColor: hasWarnings ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-green-50 dark:bg-green-950/20',
-      valueColor: hasWarnings ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400',
-      isWarning: hasWarnings
+      iconColor: stats && stats.warningCount > 0 ? 'text-orange-500' : 'text-green-500',
+      bgColor: stats && stats.warningCount > 0 ? 'bg-orange-50 dark:bg-orange-950/20' : 'bg-green-50 dark:bg-green-950/20',
+      valueColor: stats && stats.warningCount > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-green-600 dark:text-green-400',
+      isWarning: true
     },
-    // 卡片3：论点健康度
     {
       title: '论点健康度',
-      value: avgHealthScore.toString(),
-      subValue: `${healthyCount}个健康 / ${warningCount}个需关注`,
+      value: stats ? stats.avgHealthScore.toString() : '—',
+      subValue: stats ? `${stats.healthyCount}个健康 / ${stats.warningCount}个需关注` : '—',
       subText: '平均分数',
       icon: Shield,
-      iconColor: avgHealthScore >= 70 ? 'text-green-500' : avgHealthScore >= 40 ? 'text-yellow-500' : 'text-red-500',
+      iconColor: stats ? (stats.avgHealthScore >= 70 ? 'text-green-500' : stats.avgHealthScore >= 40 ? 'text-yellow-500' : 'text-red-500') : 'text-gray-500',
       bgColor: 'bg-slate-50 dark:bg-slate-950/20',
-      valueColor: avgHealthScore >= 70 ? 'text-green-600' : avgHealthScore >= 40 ? 'text-yellow-600' : 'text-red-600',
+      valueColor: stats ? (stats.avgHealthScore >= 70 ? 'text-green-600' : stats.avgHealthScore >= 40 ? 'text-yellow-600' : 'text-red-600') : 'text-gray-600',
       isHealthScore: true,
-      healthScore: avgHealthScore,
-      healthRing: <HealthRing score={avgHealthScore} />
+      healthScore: stats?.avgHealthScore || 85,
+      healthRing: <HealthRing score={stats?.avgHealthScore || 85} />
     },
-    // 卡片4：AI 本周分析
     {
       title: 'AI 本周分析',
-      value: mockAICountData.weeklyCount.toString(),
-      subValue: `最近分析 ${formatRelativeTime(mockAICountData.lastAnalysisTime)}`,
+      value: stats ? stats.weeklyAnalysisCount.toString() : '—',
+      subValue: '本周累计',
       subText: '让系统持续运转',
       icon: Brain,
       iconColor: 'text-purple-500',
@@ -169,7 +134,7 @@ export default function DecisionStats({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat) => (
+      {cards.map((stat) => (
         <Card key={stat.title} className={stat.bgColor}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -179,24 +144,19 @@ export default function DecisionStats({
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              {/* 健康度环形进度条 */}
               {stat.isHealthScore && stat.healthRing}
-              {/* 图标 */}
               {!stat.isHealthScore && (
                 <div className={`rounded-full p-2 ${stat.bgColor}`}>
                   <stat.icon className={`h-5 w-5 ${stat.iconColor}`} />
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                {/* 主要数值 */}
                 <div className={`text-2xl font-bold ${stat.valueColor}`}>
-                  {stat.value}
+                  {loading ? '—' : stat.value}
                 </div>
-                {/* 副标题 */}
                 <p className={`text-xs font-medium ${stat.valueColor} opacity-80`}>
                   {stat.subValue}
                 </p>
-                {/* 底部说明 */}
                 <p className="text-xs text-muted-foreground mt-1">
                   {stat.subText}
                 </p>

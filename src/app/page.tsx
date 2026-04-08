@@ -99,14 +99,7 @@ export default async function HomePage() {
         />
 
         {/* 顶部统计卡片 - 4张有决策价值的卡片 */}
-        <DecisionStats
-          portfolioCount={portfolioCount}
-          positionCount={positionCount}
-          avgHealthScore={avgHealthScore}
-          healthyCount={healthyCount}
-          warningCount={thesisWarningCount}
-          warningPositions={warningPositions}
-        />
+        <DecisionStats />
 
         {/* 主要内容区：AI动态 | 论题卡片 */}
         <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">

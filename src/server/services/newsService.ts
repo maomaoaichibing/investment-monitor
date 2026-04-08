@@ -136,15 +136,16 @@ function parseSinaNews(json: any, targetSymbols?: string[]): NewsItem[] {
     if (item.ext_0) keywords.push(...item.ext_0.split(',').filter(Boolean))
     if (item.keywords) keywords.push(...item.keywords.split(',').filter(Boolean).slice(0, 3))
     
-    // 如果指定了目标股票，过滤
+    // 尝试匹配持仓股票（优先），但不做过滤
+    let matchedSymbol = ''
     if (targetSymbols && targetSymbols.length > 0) {
       const titleLower = (item.title + item.summary).toLowerCase()
-      const matched = targetSymbols.filter(s => titleLower.includes(s.toLowerCase()))
-      if (matched.length === 0) continue
+      const found = targetSymbols.find(s => titleLower.includes(s.toLowerCase()))
+      if (found) matchedSymbol = found
     }
     
     items.push({
-      symbol: keywords[0] || targetSymbols?.[0] || '',
+      symbol: matchedSymbol || keywords[0] || '财经',
       title: item.title || '',
       content: item.summary || item.intro || '',
       url: item.url || item.wapurl || '',

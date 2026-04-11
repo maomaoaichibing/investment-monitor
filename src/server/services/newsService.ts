@@ -37,16 +37,48 @@ export interface NewsResult {
 // ============== 工具函数 ==============
 
 /**
+ * 关键词相关性过滤表（用于 Yahoo RSS 港股去噪）
+ * 包含：中文名、英文名、Yahoo代码、常见缩写
+ */
+const HK_SYMBOL_KEYWORDS: Record<string, string[]> = {
+  '00700': ['腾讯', 'Tencent', '0700.HK', 'SEHK:700'],
+  '09988': ['阿里', 'Alibaba', 'BABA', '9988.HK', '阿里巴巴'],
+  '03690': ['美团', 'Meituan', '3690.HK', '3690.HK'],
+  '09866': ['蔚来', 'Nio', 'NIO Inc', '9866.HK', '蔚来汽车'],
+  '01810': ['小米', 'Xiaomi', '1810.HK', '01810.HK'],
+  '00772': ['中国电信', 'China Telecom', 'CHA', '00772.HK'],
+  '002594': ['比亚迪', 'BYD', '2594.HK', '002594.SZ'],
+  '03606': ['平安', 'Ping An', '2318.HK'],
+  '02382': ['舜宇', 'Sunny Optical', '2382.HK'],
+  '01024': ['快手', 'Kuaishou', '1024.HK', 'KS'],
+  '00992': ['联想', 'Lenovo', '992.HK'],
+  '00941': ['中国移动', 'China Mobile', '0941.HK', 'CHL'],
+  '00728': ['中国铁塔', 'China Tower', '0728.HK'],
+  '00913': ['比亚迪电子', 'BYD Electronic', '0285.HK'],
+}
+
+/**
+ * 判断单条新闻是否与目标股票相关
+ * 宽松匹配：标题或摘要中出现公司名/代码即视为相关
+ */
+function isNewsRelevant(title: string, content: string, symbol: string): boolean {
+  const text = (title + ' ' + content).toLowerCase()
+  const keywords = HK_SYMBOL_KEYWORDS[symbol]
+  if (!keywords) return true // 未知股票，全部保留
+  return keywords.some(kw => text.includes(kw.toLowerCase()))
+}
+
+/**
  * 解析 Yahoo Finance RSS XML
  */
-function parseYahooRSS(xml: string, symbol: string): NewsItem[] {
+function parseYahooRSS(xml: string, symbol: string, market: string = 'US'): NewsItem[] {
   const items: NewsItem[] = []
   
   // 匹配 <item>...</item>
   const itemRegex = /<item[^>]*>([\s\S]*?)<\/item>/gi
   let match
   
-  while ((match = itemRegex.exec(xml)) !== null && items.length < 20) {
+  while ((match = itemRegex.exec(xml)) !== null && items.length < 50) {
     const itemXml = match[1]
     
     const getTag = (tag: string) => {
@@ -67,6 +99,12 @@ function parseYahooRSS(xml: string, symbol: string): NewsItem[] {
     const source = getTag('source') || 'Yahoo Finance'
     
     if (!title || !link) continue
+    
+    // 港股：相关性过滤，去掉 Paramount/Pony AI 等无关条目
+    if (market === 'HK' && !isNewsRelevant(title, description, symbol)) {
+      console.log(`[NewsService] Yahoo RSS 港股过滤无关条目: "${title.substring(0, 60)}"`)
+      continue
+    }
     
     // 解析日期
     let publishedAt = new Date().toISOString()
@@ -257,10 +295,10 @@ async function fetchFromYahooRSS(symbol: string, market: string): Promise<NewsRe
       return { success: false, error: '无效股票代码', source: 'yahoo_rss' }
     }
     
-    const items = parseYahooRSS(xml, symbol)
+    const items = parseYahooRSS(xml, symbol, market)
     
     if (items.length === 0) {
-      return { success: false, error: '未找到新闻', source: 'yahoo_rss' }
+      return { success: false, error: 'Yahoo RSS 无相关新闻（已过滤无关条目）', source: 'yahoo_rss' }
     }
     
     return {
@@ -384,70 +422,142 @@ async function fetchFromSinaNews(symbol?: string, market?: string): Promise<News
   }
 }
 
-// ============== 数据源 4: Yahoo Finance Web Search (兜底) ==============
+// ============== 数据源 4: 东方财富快讯（多市场分类） ==============
 
-async function fetchFromYahooSearch(symbol: string, market: string): Promise<NewsResult> {
+/**
+ * 东方财富快讯 - 按市场分类的实时财经新闻
+ * category 103 = 港股, 104 = 美股, 105 = A股
+ * 无需认证，免费稳定
+ */
+async function fetchFromEastMoneyKuaixun(symbol: string, market: string): Promise<NewsResult> {
   try {
-    let querySymbol = symbol
-    if (market === 'US') {
-      querySymbol = symbol.toUpperCase()
-    } else if (market === 'HK') {
-      querySymbol = `${symbol}.HK`
+    // 确定快讯分类
+    let category: string
+    if (market === 'HK') {
+      category = '103' // 港股
+    } else if (market === 'US') {
+      category = '104' // 美股
+    } else {
+      category = '105' // A股
     }
-    
-    const url = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(querySymbol)}&newsCount=10&enableFuzzyQuery=false`
-    
+
+    const url = `https://newsapi.eastmoney.com/kuaixun/v1/getlist_${category}_ajaxResult_20_1_.html`
+
     const response = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/json'
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120',
+        'Accept': 'text/plain, */*',
+        'Referer': 'https://www.eastmoney.com'
       },
       signal: AbortSignal.timeout(8000)
     })
-    
+
     if (!response.ok) {
-      return { success: false, error: `HTTP ${response.status}`, source: 'yahoo_search' }
+      return { success: false, error: `HTTP ${response.status}`, source: 'eastmoney_kuaixun' }
     }
-    
-    const json = await response.json()
-    const news: any[] = json.news || []
-    
-    if (news.length === 0) {
-      return { success: false, error: '未找到新闻', source: 'yahoo_search' }
+
+    const rawText = await response.text()
+
+    // 解析 var ajaxResult={...} 格式
+    const jsonMatch = rawText.match(/ajaxResult\s*=\s*(\{[\s\S]*?\})\s*;?\s*$/m)
+    if (!jsonMatch) {
+      return { success: false, error: '东方财富快讯响应格式异常', source: 'eastmoney_kuaixun' }
     }
-    
-    const items: NewsItem[] = news.map((item) => {
-      const publishedAt = item.published_at
-        ? new Date(item.published_at * 1000).toISOString()
-        : new Date().toISOString()
-      
-      return {
-        symbol,
-        title: item.title || '',
-        content: (item.summary || '').substring(0, 300),
-        url: item.link || item.url || '',
-        source: item.publisher || 'Yahoo Finance',
-        publishedAt,
-        tags: item.related_tickers || [],
-        imageUrl: item.thumbnail?.resolutions?.[0]?.url || item.thumbnail?.url || undefined
-      }
+
+    let json: any
+    try {
+      json = JSON.parse(jsonMatch[1])
+    } catch {
+      return { success: false, error: '东方财富快讯 JSON 解析失败', source: 'eastmoney_kuaixun' }
+    }
+
+    const lives: any[] = json?.LivesList || []
+    if (lives.length === 0) {
+      return { success: false, error: '东方财富快讯无数据', source: 'eastmoney_kuaixun' }
+    }
+
+    // 关键词匹配表
+    const matchKeywords: Record<string, string[]> = {
+      '00700': ['腾讯', '0700', '00700', 'Tencent'],
+      '09988': ['阿里', '09988', '9988', 'Alibaba', '阿里巴巴', 'BABA'],
+      '03690': ['美团', '03690', '3690', 'Meituan'],
+      '09866': ['蔚来', '09866', '9866', 'Nio', 'NIO', '蔚来汽车'],
+      '01810': ['小米', '01810', '1810', 'Xiaomi', '雷军'],
+      '002594': ['比亚迪', '002594', '2594', 'BYD'],
+      '00772': ['中国电信', '00772', 'China Telecom'],
+      'FUTU': ['富途', 'FUTU', '01729', '1729'],
+      'MU': ['美光', 'Micron', 'MU', '内存'],
+      'PDD': ['拼多多', 'PDD', 'Pinduoduo', 'Temu'],
+      'NVDA': ['英伟达', 'NVIDIA', 'NVDA', 'GPU', '黄仁勋'],
+      'AAPL': ['苹果', 'Apple', 'AAPL', 'iPhone'],
+      'TSLA': ['特斯拉', 'Tesla', 'TSLA', '马斯克'],
+      'TSM': ['台积电', 'TSMC', 'TSM', '半导体'],
+      'BABA': ['阿里', 'Alibaba', 'BABA', '阿里巴巴'],
+      '600519': ['茅台', '600519', '贵州茅台', '酱香'],
+      '300750': ['宁德', '300750', 'CATL', '电池'],
+    }
+
+    // 目标关键词（大小写不敏感）
+    const targetKw = matchKeywords[symbol] || [symbol]
+    const symbolLower = symbol.toLowerCase()
+
+    // 过滤：保留包含目标关键词的条目，或（如果没有持仓指定）取前20条
+    const filtered = lives.filter(item => {
+      const text = ((item.title || '') + ' ' + (item.summary || '')).toLowerCase()
+      return targetKw.some(kw => text.includes(kw.toLowerCase()))
     })
-    
+
+    // 如果过滤后条目太少（<3条），放宽条件：只要有匹配就保留，否则用全量
+    const itemsToUse = filtered.length >= 3 ? filtered : lives.slice(0, 20)
+
+    const newsItems: NewsItem[] = itemsToUse.map(item => ({
+      symbol: symbol,
+      title: item.title || '',
+      content: item.summary || '',
+      url: item.url_w || item.url_m || item.url || '',
+      source: item.media_source || item.from_source || '东方财富',
+      publishedAt: item.showtime || new Date().toISOString(),
+      tags: []
+    }))
+
+    if (newsItems.length === 0) {
+      return { success: false, error: '东方财富快讯无匹配新闻', source: 'eastmoney_kuaixun' }
+    }
+
+    console.log(`[NewsService] 东方财富快讯 ${market}: ${filtered.length}/${lives.length} 条匹配 "${symbol}"`)
+
     return {
       success: true,
-      data: items,
-      source: 'yahoo_search',
+      data: newsItems,
+      source: 'eastmoney_kuaixun',
       fetchedAt: new Date().toISOString()
     }
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Yahoo搜索失败',
-      source: 'yahoo_search'
+      error: error instanceof Error ? error.message : '东方财富快讯获取失败',
+      source: 'eastmoney_kuaixun'
     }
   }
 }
 
+// ============== 数据源 5: Yahoo Finance Web Search (已禁用) ==============
+// Yahoo Search API 已全面返回 403，2026-04-11 确认失效，保留函数但不启用
+
+/**
+ * Yahoo Finance Web Search - 已全面禁用（2026-04-11 返回403）
+ * 保留函数签名，永久返回失败
+ */
+async function fetchFromYahooSearch(symbol: string, market: string): Promise<NewsResult> {
+  return { success: false, error: 'Yahoo Search 已禁用（返回403）', source: 'yahoo_search' }
+}
+
+/* 原函数已禁用
+async function _fetchFromYahooSearch(symbol: string, market: string): Promise<NewsResult> {
+  // 2026-04-11: Yahoo Search API 全面返回403，已禁用
+  return { success: false, error: '已禁用', source: 'yahoo_search' }
+}
+*/
 // ============== Finnhub News ==============
 
 /**
@@ -558,6 +668,10 @@ async function fetchFromFinnhubNews(symbol: string, market: string): Promise<New
 
 /**
  * 获取单只股票的新闻
+ * 数据源优先级（已更新，2026-04-11）:
+ * - Yahoo Search 已全面禁用（返回403）
+ * - Yahoo RSS 港股增加了相关性过滤（去掉 Paramount/Pony AI 等）
+ * - 东方财富快讯作为补充源（覆盖港股/美股/A股三市场）
  */
 export async function fetchNewsForSymbol(
   symbol: string,
@@ -572,21 +686,22 @@ export async function fetchNewsForSymbol(
   if (market === 'US') {
     sources.push(
       { fn: fetchFromFinnhubNews, name: 'Finnhub News' },
-      { fn: fetchFromYahooSearch, name: 'Yahoo Search' },
       { fn: fetchFromYahooRSS, name: 'Yahoo RSS' },
+      { fn: fetchFromEastMoneyKuaixun, name: '东方财富快讯' },
       { fn: fetchFromSinaNews, name: '新浪财经' }
     )
   } else if (market === 'HK') {
     sources.push(
       { fn: fetchFromFinnhubNews, name: 'Finnhub News' },
       { fn: fetchFromYahooRSS, name: 'Yahoo RSS' },
-      { fn: fetchFromSinaNews, name: '新浪财经' },
-      { fn: fetchFromYahooSearch, name: 'Yahoo Search' }
+      { fn: fetchFromEastMoneyKuaixun, name: '东方财富快讯' },
+      { fn: fetchFromSinaNews, name: '新浪财经' }
     )
   } else {
-    // A股：东方财富 + 新浪财经 + Finnhub
+    // A股：东方财富公告 + 快讯 + 新浪财经 + Finnhub
     sources.push(
-      { fn: fetchFromEastMoney, name: '东方财富' },
+      { fn: fetchFromEastMoney, name: '东方财富公告' },
+      { fn: fetchFromEastMoneyKuaixun, name: '东方财富快讯' },
       { fn: fetchFromSinaNews, name: '新浪财经' },
       { fn: fetchFromFinnhubNews, name: 'Finnhub News' }
     )

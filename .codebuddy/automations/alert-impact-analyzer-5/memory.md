@@ -1,86 +1,31 @@
 # Alert Impact Analyzer - 执行记录
 
-## 最新执行 (2026-04-08 18:03):
+## 最近执行 (2026-04-11 00:54)
 
-**状态**: ✅ 成功
+### 执行结果
+- **状态**: ✅ 成功
+- **分析范围**: 101条未读 alerts (重要+紧急级别)
+- **成功率**: 101/101 (100%)
+- **耗时**: ~3分钟
 
-**分析结果**:
-- 未读 alerts: 2个（蔚来urgent, 美光科技important）
-- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
-- 美光科技(MU): neutral, 影响分 4, 健康度 80→75 (-5), intact
+### 汇总
+- Bullish (正面): 28条 (27.7%)
+- Bearish (负面): 46条 (45.5%)  
+- Neutral (中性): 27条 (26.7%)
 
-**API**: http://localhost:4000/api/alerts/[id]/analyze
+### 标的健康变化
+| 标的 | Bullish | Bearish | Neutral | 净影响 |
+|------|---------|---------|--------|--------|
+| 00981 | 0 | 19 | 0 | ⚠️ 最弱(-15.6) |
+| PDD | 4 | 18 | 1 | 偏弱(-15.7) |
+| MU | 11 | 8 | 5 | 中性偏强(+4.4) |
+| AAPL | 9 | 1 | 21 | 中性(+3.2) |
+| NIO | 4 | 0 | 0 | ✅ 最强(+5.2) |
 
----
+### 注意事项
+- 积压的101条 alerts 全部分析完毕
+- 中芯国际(00981)负面压力最大，需重点关注
+- NIO(蔚来)投资论点最为健康
 
-## 执行记录 (2026-04-08 16:01):
-
-**状态**: ✅ 成功
-
-**分析结果**:
-- 未读 alerts: 2个（蔚来urgent, 美光科技important）
-- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
-- 美光科技(MU): neutral, 影响分 3, 健康度 80→75 (-5), intact
-
-**API**: http://localhost:4000/api/alerts/[id]/analyze
-
----
-
-## 执行记录 (2026-04-08 07:12):
-
-**状态**: ✅ 成功
-
-**分析结果**:
-- 未读 alerts: 4个（腾讯控股info、中国海洋石油watch、美光科技important、蔚来urgent）
-- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
-- 美光科技(MU): neutral, 影响分 4, 健康度 80→65 (-15), weakened
-
-**API**: http://localhost:4000/api/alerts/[id]/analyze
-
----
-
-## 执行记录 (2026-04-08 05:11):
-
-**状态**: ✅ 成功
-
-**分析结果**:
-- 未读 alerts: 4个（腾讯控股info、中国海洋石油watch、美光科技important、蔚来urgent）
-- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
-- 美光科技(MU): neutral, 影响分 4, 健康度 80→75 (-5), intact
-
-**API**: http://localhost:4000/api/alerts/[id]/analyze
-
----
-
-## 最新执行 (2026-04-08 03:10):
-
-**状态**: ✅ 成功
-
-**分析结果**:
-- 未读 important/urgent alerts: 2个
-- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
-- 美光科技(MU): neutral, 影响分 4, 健康度 82→65 (-15), weakened
-
-**API**: http://localhost:4000/api/alerts/[id]/analyze
-
----
-
-## 最新执行 (2026-04-07 23:05):
-
-**状态**: ✅ 成功
-
-**分析结果**:
-- 未读 important/urgent alerts: 2个
-- 蔚来(NIO): bearish, 影响分 7, 健康度 82→65 (-17), weakened
-- 美光(MU): neutral, 影响分 4, 健康度 82→75 (-5), intact
-
-**API**: http://62.234.79.188:4000/api/alerts/[id]/analyze
-
----
-
-## 历史摘要
-
-- 2026-04-07 (23:05): ✅ 蔚来 bearish 7/weakened, 美光 neutral 4/intact
-- 2026-04-07 (21:04): ✅ 无未读重要alerts（蔚来/美光已处理）
-- 2026-04-07 (19:42): ✅ 蔚来 bearish 7/weakened, 美光 neutral 3/intact
-- 2026-04-07 (19:27): ✅ 蔚来 bearish 7/weakened, 美光 neutral 3/intact
+## 历史执行
+- 2026-04-10: MU/NIO/PDD全线bullish，101条积压稳定

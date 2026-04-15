@@ -2,6 +2,208 @@
 
 ## 最近执行
 
+**执行时间**: 2026-04-15 14:50
+**执行状态**: ✅ 完成（1条 urgent alert 分析，结论稳定）
+
+### API 调用
+- GET /api/alerts?status=unread → 3条（1 urgent蔚来 + 1 watch中海油 + 1 info腾讯）
+- level=urgent → 1条（蔚来 cmna1yllj，2026-03-28历史数据）
+- level=important → 0条
+- POST /api/alerts/cmna1yllj000313t8252w2mdx/analyze → ✅ bearish(7), health 65(-15), weakened
+- 蔚来 urgent 累计分析 15 次，结论一致
+- 无新的 high/medium 级别新增 alerts
+- 结果写入 2026-04-15.md
+
+---
+
+**执行时间**: 2026-04-15 12:28
+**执行状态**: ✅ 完成（1条 urgent alert 分析，结论稳定）
+
+### API 调用
+- level=urgent → 1条（蔚来 cmna1yllj，2026-03-28历史数据）
+- level=important → 0条
+- POST /api/alerts/cmna1yllj000313t8252w2mdx/analyze → ✅ bearish(7), health 65(-15), weakened
+- 蔚来 urgent 累计分析 14 次，结论一致
+- 结果写入 2026-04-15.md
+
+---
+
+**执行时间**: 2026-04-15 10:26
+**执行状态**: ⚠️ 无新增 high/medium alerts（蔚来 urgent 累计11次分析，结论稳定 bearish(7) health↓17）
+
+### API 调用
+- level=urgent → 1条（蔚来 cmna1yllj，2026-03-28历史数据）
+- level=important → 0条
+- POST /api/alerts/cmna1yllj000313t8252w2mdx/analyze → ✅ bearish(7), health 65(-17), weakened
+- 蔚来 urgent 累计分析 11 次，结论一致
+- 结果写入 2026-04-15.md
+
+---
+
+**执行时间**: 2026-04-14 17:55
+**执行状态**: ⚠️ 无新增 high/medium alerts（蔚来 urgent 17:53已确认"Alert不存在"，已软删除）
+
+### API 调用
+- level=urgent → 1条（蔚来 cmna1yllj, 2026-03-28）
+- level=important → 0条
+- 蔚来 urgent 累计分析 10+ 次，结果一致 bearish(7)，POST /analyze 已不存在的
+- 无新的 high/medium alerts
+- 结果写入 2026-04-14.md
+
+---
+
+**执行时间**: 2026-04-13 23:56
+**执行状态**: ✅ 完成（1条 urgent alert 分析）
+
+### API 调用
+- level=urgent → 1条（蔚来 cmna1yllj，2026-03-28历史数据）
+- level=important → 0条
+- POST /api/alerts/cmna1yllj000313t8252w2mdx/analyze → ✅ bearish(7), health 65(-15), weakened
+- 蔚来 urgent 累计分析8次，结果一致
+- 结果写入 2026-04-13.md
+
+---
+
+**执行时间**: 2026-04-13 17:44
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（蔚来 urgent 已七次分析，命中缓存，跳过）
+
+### API 调用
+- level=urgent → 1条（蔚来 cmna1yllj，2026-03-28历史数据）
+- level=important → 0条
+- 蔚来 urgent 已七次分析（04-11 18:26 / 04-12 00:41/23:37 / 04-13 01:39/03:40/05:41/07:42），结果一致 bearish(7) health 65(-17)，跳过
+- info/watch 级别不属于 high/medium，不分析
+- 结果写入 2026-04-13.md
+
+---
+
+**执行时间**: 2026-04-13 07:42
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（蔚来 urgent 已六次分析，命中缓存，跳过）
+
+### API 调用
+- limit=50 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700，全部 2026-03-28）
+- 蔚来 urgent 已六次分析（04-11 18:26 / 04-12 00:41 / 04-12 23:37 / 04-13 01:39 / 04-13 03:40 / 04-13 05:41），结果一致 bearish(7) health 65(-15)，命中缓存
+- info/watch 级别不属于 high/medium，不分析
+- 结果写入 2026-04-13.md
+
+---
+
+**执行时间**: 2026-04-13 05:41
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（蔚来 urgent 已五次分析，跳过）
+
+### API 调用
+- limit=20 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700，全部 2026-03-28）
+- 蔚来 urgent cmna1yllj 已五次分析（04-11 18:26 / 04-12 00:41 / 04-12 23:37 / 04-13 01:39 / 04-13 03:40），结果一致 bearish(7) health 65(-17)，跳过
+- info/watch 级别不属于 high/medium，不分析
+- 结果写入 2026-04-13.md
+
+---
+
+**执行时间**: 2026-04-13 03:40
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（蔚来 urgent 已于 04-11/04/12 四次分析，跳过）
+
+### API 调用
+- level=urgent → 1条（蔚来 cmna1yllj000313t8252w2mdx，2026-03-28历史数据）
+- level=important → 0条
+- limit=20 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700）
+- 蔚来 urgent 已四次分析（04-11 18:26 / 04-12 00:41 / 04-12 23:37 / 04-13 01:39），结果一致bearish(7) health 65(-17)，跳过重复分析
+- 结果写入 2026-04-13.md
+
+---
+
+**执行时间**: 2026-04-13 01:39
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（蔚来 urgent 已于 04-11/04-12 三次分析，跳过）
+
+### API 调用
+- level=urgent → 1条（蔚来 cmna1yllj000313t8252w2mdx，2026-03-28历史数据）
+- level=important → 0条
+- limit=20 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700）
+- 蔚来 urgent 已三次分析（04-11 18:26 / 04-12 00:41 / 04-12 23:37），结果一致bearish(7) health 65(-17)
+- 结果写入 2026-04-13.md
+
+---
+
+**执行时间**: 2026-04-12 23:37
+**执行状态**: ✅ 完成（1条 urgent alert 分析）
+
+### API 调用
+- level=important,urgent → 0条（逗号解析bug）
+- level=urgent → 1条（蔚来 cmna1yllj000313t8252w2mdx）
+- level=important → 0条
+- POST /api/alerts/cmna1yllj000313t8252w2mdx/analyze → ✅ bearish, score=7, health 82→65(-17), weakened
+- 结果写入 2026-04-12.md
+
+---
+
+**执行时间**: 2026-04-12 12:20
+**执行状态**: ⚠️ API 调用失败（本地 shell fork EAGAIN）
+
+### API 调用
+- level=important,urgent → 0条（逗号解析bug）
+- level=urgent / important → ❌ fork EAGAIN
+- 10:15 历史: limit=20 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700）
+- NIO urgent 已于 00:41 分析完毕（bearish, score=7, health 65）
+- 无新增 high/medium alerts
+- 结果写入 2026-04-12.md
+
+---
+
+**执行时间**: 2026-04-12 10:15
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（NIO urgent 已于 00:41 分析过）
+
+### API 调用
+- GET /api/alerts?status=unread&limit=20 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700）
+- NIO urgent alert 已于 2026-04-11 18:26 和 2026-04-12 00:41 分析过，跳过
+- watch/info 级别不属于 high/medium，跳过
+- fork资源持续紧张（EAGAIN），首次curl成功后续全失败
+- 结果写入 2026-04-12.md
+
+---
+
+**执行时间**: 2026-04-11 22:46
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（NIO urgent 已于 18:26 分析过）
+
+### API 调用
+- GET /api/alerts?status=unread&level=important,urgent → 0条（level参数已知问题）
+- GET /api/alerts?status=unread&limit=20 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700）
+- NIO urgent alert 已于 18:26 分析过，跳过重复分析
+- watch/info 级别不属于 high/medium，跳过
+- 结果写入 2026-04-11.md
+
+---
+
+**执行时间**: 2026-04-11 20:31
+**执行状态**: ⚠️ 无新增 high/medium 级别 alerts（NIO urgent 已于 18:26 分析过）
+
+### API 调用
+- GET /api/alerts?status=unread&limit=100 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700）
+- NIO urgent alert 已于 18:26 分析过，跳过重复分析
+- watch/info 级别不属于 high/medium，跳过
+- 结果写入 2026-04-11.md
+
+---
+
+**执行时间**: 2026-04-11 18:26
+**执行状态**: ✅ 完成（1条 urgent alert 分析）
+
+### API 调用
+- GET /api/alerts?status=unread&level=important,urgent → 0条（level参数已知问题）
+- GET /api/alerts?status=unread&limit=20 → 3条（1 urgent NIO, 1 watch 00883, 1 info 00700）
+- POST /api/alerts/cmna1yllj000313t8252w2mdx/analyze → ✅ 蔚来 bearish(7), 健康分65(-15)
+- 结果写入 2026-04-11.md
+
+---
+
+**执行时间**: 2026-04-11 16:24
+**执行状态**: ⚠️ 今日无新增 alerts（全部为 2026-04-08 历史积压）
+
+### API 调用
+- GET /api/alerts?status=unread&level=important,urgent&limit=100 → 100条（均为历史积压，0新增）
+- 标的分布: AAPL 31, MU 23, PDD 23, 00981 19, NIO 4
+- 今日新增: 0条 → 跳过分析
+- 结果写入 2026-04-11.md
+
+---
+
 **执行时间**: 2026-04-11 10:54
 **执行状态**: ⚠️ 今日无新增 alerts（全部为 2026-04-08 历史积压）
 

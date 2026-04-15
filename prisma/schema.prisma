@@ -170,6 +170,26 @@ model Risk {
   portfolio Portfolio? @relation(fields: [portfolioId], references: [id])
 }
 
+model EarningsCalendar {
+  id          String   @id @default(cuid())
+  symbol      String
+  assetName   String?
+  market      String   // US / HK / A-share
+  period      String   // Q1 / Q2 / Q3 / Q4 / Annual
+  fiscalYear  Int?
+  earningsDate DateTime
+  epsActual   Float?
+  epsEstimate Float?
+  revenueActual   Float?
+  revenueEstimate Float?
+  isConfirmed Boolean  @default(true) // 是否确认日期
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([symbol])
+  @@index([earningsDate])
+}
+
 model PromptTemplate {
   id          String   @id @default(cuid())
   name        String

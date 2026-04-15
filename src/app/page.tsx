@@ -7,6 +7,7 @@ import UpcomingEvents from '@/components/dashboard/upcoming-events'
 import { VersionBadge } from '@/components/version/version-badge'
 import QuickActions from '@/components/dashboard/quick-actions'
 import PortfolioAnalytics from '@/components/dashboard/portfolio-analytics'
+import InvestmentInsights from '@/components/dashboard/investment-insights'
 
 export default async function HomePage() {
   // 从数据库获取真实统计数据
@@ -116,6 +117,9 @@ export default async function HomePage() {
             <UpcomingEvents />
           </div>
         </div>
+
+        {/* 新功能区：舆情情感趋势 + 财报日历 */}
+        <InvestmentInsights />
       </div>
     </div>
   )

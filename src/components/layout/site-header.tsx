@@ -16,6 +16,7 @@ import {
   TestTube,
   History,
   Newspaper,
+  Brain,
 } from 'lucide-react'
 
 // MobileMenu 是客户端组件，需要 useState
@@ -25,6 +26,7 @@ function MobileMenu({ unreadAlertCount }: { unreadAlertCount: number }) {
   const navItems = [
     { href: '/', label: '仪表盘', icon: 'Home' },
     { href: '/portfolios', label: '投资组合', icon: 'Briefcase' },
+    { href: '/hedge-fund', label: 'AI Fund', icon: 'Brain' },
     { href: '/alerts', label: '提醒', icon: 'AlertTriangle', badge: unreadAlertCount },
     { href: '/theses', label: '投资论题', icon: 'PieChart' },
     { href: '/news', label: '舆情', icon: 'Newspaper' },
@@ -39,6 +41,8 @@ function MobileMenu({ unreadAlertCount }: { unreadAlertCount: number }) {
     PieChart,
     TestTube,
     History,
+    Brain,
+    Newspaper,
   }
 
   return (
@@ -122,6 +126,10 @@ export function SiteHeader({ unreadAlertCount = 0 }: SiteHeaderProps) {
           </Link>
           <Link href="/portfolios" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
             投资组合
+          </Link>
+          <Link href="/hedge-fund" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+            <Brain className="h-3.5 w-3.5" />
+            AI Fund
           </Link>
           <Link href="/alerts" className="text-sm font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
             提醒

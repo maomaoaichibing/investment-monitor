@@ -116,7 +116,9 @@ async function fetchFromTencent(symbol: string, market: string): Promise<StockSe
       throw new Error(`HTTP ${response.status}`)
     }
 
-    const text = await response.text()
+    // 腾讯财经返回 GBK 编码，需用 TextDecoder 转码为 UTF-8
+    const arrayBuffer = await response.arrayBuffer()
+    const text = new TextDecoder('gbk').decode(arrayBuffer)
     const match = text.match(/="([^"]+)"/)
     if (!match) {
       return { success: false, error: '解析失败: 无法匹配数据' }
@@ -225,7 +227,9 @@ async function fetchFromSina(symbol: string, market: string): Promise<StockServi
       throw new Error(`HTTP ${response.status}`)
     }
 
-    const text = await response.text()
+    // 新浪财经返回 GBK 编码，需用 TextDecoder 转码为 UTF-8
+    const arrayBuffer = await response.arrayBuffer()
+    const text = new TextDecoder('gbk').decode(arrayBuffer)
     const match = text.match(/"([^"]+)"/)
     if (!match) {
       return { success: false, error: '解析失败: 无法匹配数据' }

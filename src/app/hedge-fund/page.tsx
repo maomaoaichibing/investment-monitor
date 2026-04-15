@@ -434,6 +434,12 @@ export default function HedgeFundPage() {
       {/* Result */}
       {result && (
         <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Stock header */}
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold">{result.assetName}</h2>
+            <Badge variant="outline" className="font-mono">{result.symbol}</Badge>
+          </div>
+
           {/* Decision banner */}
           <DecisionBanner decision={result.decision} assetName={result.assetName} />
 

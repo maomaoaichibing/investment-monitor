@@ -19,6 +19,7 @@ import { aggregateSignals } from './portfolio-manager';
 import { getStockQuote } from '@/server/services/stockService';
 import { getKLineData } from '@/server/services/klineService';
 import { fetchNewsForSymbol } from '@/server/services/newsService';
+import { getDynamicWeights, saveAnalysisRecord } from './agent-performance';
 
 /**
  * 获取所有 Agent 列表
@@ -144,8 +145,39 @@ export async function analyzeSymbol(
 
   const signals = agentAnalyses.map(a => a.signal);
 
+  // Step 3.5: 获取动态权重（基于历史准确率）
+  let dynamicWeights: Record<string, number> | undefined;
+  try {
+    dynamicWeights = await getDynamicWeights('30d');
+    console.log('[HedgeFund] 使用动态权重:', dynamicWeights);
+  } catch (err) {
+    console.warn('[HedgeFund] 动态权重获取失败，使用默认权重:', err);
+  }
+
   // Step 4: 聚合信号生成最终决策
-  const decision = aggregateSignals(signals, symbol);
+  const decision = aggregateSignals(signals, symbol, dynamicWeights);
+
+  // Step 4.5: 持久化分析记录（异步，不阻塞返回）
+  try {
+    await saveAnalysisRecord({
+      symbol,
+      market,
+      action: decision.action,
+      confidence: decision.confidence,
+      reasoning: decision.reasoning,
+      agentSignals: signals.map(s => ({
+        agentId: s.agentId,
+        signal: s.signal,
+        confidence: s.confidence,
+        reasoning: s.reasoning,
+      })),
+      signalSummary: decision.signalSummary,
+      weightedScore: decision.signalSummary.weightedScore,
+      analyzedAt: decision.analyzedAt,
+    });
+  } catch (err) {
+    console.warn('[HedgeFund] 分析记录保存失败（非阻塞）:', err);
+  }
 
   console.log(
     `[HedgeFund] 分析完成 ${symbol}: ${decision.action} (置信度${decision.confidence}%) ` +

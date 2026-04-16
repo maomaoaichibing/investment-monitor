@@ -7,8 +7,10 @@
  * 核心逻辑：
  * 1. 收集所有 Agent 信号
  * 2. 统计多/空/中性数量
- * 3. 计算加权信号得分
+ * 3. 计算加权信号得分（支持动态权重）
  * 4. 生成最终决策
+ *
+ * v2: 支持 Self Driving Portfolio — 动态权重基于历史准确率
  */
 
 import type {
@@ -19,26 +21,34 @@ import type {
 } from './types';
 
 /**
- * 信号权重配置
- * 可以调整各 Agent 的信号在最终决策中的权重
+ * 默认信号权重配置
+ * 当动态权重不可用时使用
  */
-const SIGNAL_WEIGHTS: Record<string, number> = {
+const DEFAULT_SIGNAL_WEIGHTS: Record<string, number> = {
   'value-investor': 1.3,    // 价值投资权重略高
   'growth-investor': 1.2,   // 成长投资权重略高
   'technical-analyst': 0.8,  // 技术面作为辅助参考
   'sentiment-analyst': 0.7,  // 情绪面权重最低
 };
 
+export { DEFAULT_SIGNAL_WEIGHTS };
+
 /**
  * 聚合所有 Agent 信号，生成最终投资决策
+ *
+ * @param signals Agent 信号数组
+ * @param symbol 目标股票
+ * @param dynamicWeights 可选的动态权重（来自 AgentPerformanceTracker）
  */
 export function aggregateSignals(
   signals: AgentSignal[],
-  symbol: string
+  symbol: string,
+  dynamicWeights?: Record<string, number>
 ): PortfolioDecision {
-  const summary = computeSignalSummary(signals);
+  const weights = dynamicWeights || DEFAULT_SIGNAL_WEIGHTS;
+  const summary = computeSignalSummary(signals, weights);
   const action = determineAction(summary);
-  const reasoning = generateReasoning(summary, action, symbol);
+  const reasoning = generateReasoning(summary, action, symbol, weights);
   const confidence = computeDecisionConfidence(summary, action);
 
   return {
@@ -55,7 +65,10 @@ export function aggregateSignals(
 /**
  * 计算信号统计摘要
  */
-function computeSignalSummary(signals: AgentSignal[]): SignalSummary {
+function computeSignalSummary(
+  signals: AgentSignal[],
+  weights: Record<string, number>
+): SignalSummary {
   const bullish = signals.filter(s => s.signal === 'bullish').length;
   const bearish = signals.filter(s => s.signal === 'bearish').length;
   const neutral = signals.filter(s => s.signal === 'neutral').length;
@@ -64,7 +77,7 @@ function computeSignalSummary(signals: AgentSignal[]): SignalSummary {
   let weightedScore = 0;
   let totalWeight = 0;
   for (const s of signals) {
-    const weight = SIGNAL_WEIGHTS[s.agentId] || 1.0;
+    const weight = weights[s.agentId] || 1.0;
     const signalValue = s.signal === 'bullish' ? 1 : s.signal === 'bearish' ? -1 : 0;
     weightedScore += signalValue * weight * (s.confidence / 100);
     totalWeight += weight;
@@ -148,7 +161,8 @@ function computeDecisionConfidence(
 function generateReasoning(
   summary: SignalSummary,
   action: PortfolioAction,
-  symbol: string
+  symbol: string,
+  weights: Record<string, number>
 ): string {
   const { bullish, bearish, neutral, weightedScore } = summary;
   const total = bullish + bearish + neutral;

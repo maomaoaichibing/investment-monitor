@@ -214,3 +214,48 @@ model EmailSubscription {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// ============================================================
+// AI Hedge Fund — 分析记录 & Agent 性能追踪
+// ============================================================
+
+model AnalysisRecord {
+  id          String   @id @default(cuid())
+  symbol      String
+  market      String   @default("HK")
+  action      String   // buy / sell / hold
+  confidence  Float    // 0-100
+  reasoning   String
+  agentSignalsJson String @map("agent_signals_json") // JSON: AgentSignal[]
+  signalSummaryJson String @map("signal_summary_json") // JSON: SignalSummary
+  weightedScore Float?
+  analyzedAt  DateTime
+  verified    Boolean  @default(false) // 是否已验证（对比实际涨跌）
+  actualChange Float?  // 验证时的实际涨跌幅(%)
+  verifyWindow String? // 验证窗口: 7d / 30d / 90d
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([symbol])
+  @@index([analyzedAt])
+  @@index([verified])
+}
+
+model AgentPerformance {
+  id          String   @id @default(cuid())
+  agentId     String   // e.g. 'value-investor'
+  symbol      String
+  predictedSignal String // bullish / bearish / neutral
+  predictedConfidence Float
+  actualChange Float?  // 验证窗口后的实际涨跌幅(%)
+  verified    Boolean  @default(false)
+  verifyWindow String? // 7d / 30d / 90d
+  verifiedAt  DateTime?
+  analysisRecordId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([agentId, symbol, createdAt])
+  @@index([agentId])
+  @@index([verified])
+}
